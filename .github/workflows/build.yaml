@@ -8,6 +8,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SOLANA_CLI_VERSION: 1.9.12
+  NODE_VERSION: 17.4.0
+  ANCHOR_VERSION: 0.22.1
 
 jobs:
 
@@ -54,44 +57,3 @@ jobs:
         sudo apt update
         sudo apt-get install -y libudev-dev
         sh -c "$(curl -sSfL https://release.solana.com/v1.9.12/install)"
-
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-
-    - name: cache-build-artifacts
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.rustup/toolchains
-          # If we only cache ~/.cargo, for some reason Cargo still downloads crates later,
-          # so instead we cache the individual subdirectories and files, which hopefully
-          # works. Some of the top-level files are needed to make "cargo install" work.
-          ~/.cargo/.crates.toml
-          ~/.cargo/.crates2.json
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: lint-1.9.12-v3-${{ hashFiles('Cargo.lock') }}
-        restore-keys: lint-1.9.12-v3
-
-    - name: Install linters
-      run: |
-        sudo apt update
-        sudo apt-get install -y libudev-dev
-        rustup component add clippy
-        cargo install cargo-license --version 0.4.1
-
-    - name: Run Clippy
-      run: |
-        cargo clippy --manifest-path Cargo.toml -- --deny warnings
-
-    - name: Check license compatibility
-      run: |
-        tests/check_licenses.py
