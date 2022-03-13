@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{TokenAccount, Token, Mint};
 use solana_program::program_option::COption;
 use crate::state::{Lido, Reserve};
+use crate::token::{Lamports, StLamports};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -10,6 +11,7 @@ pub mod state;
 pub mod logic;
 pub mod error;
 mod account_map;
+mod token;
 
 
 #[program]
@@ -216,9 +218,3 @@ pub struct RewardDistribution {
     pub developer_fee: u32,
     pub st_sol_appreciation: u32,
 }
-
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct Lamports(pub u64);
-
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct StLamports(pub u64);
