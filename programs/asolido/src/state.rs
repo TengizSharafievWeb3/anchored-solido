@@ -3,13 +3,14 @@
 
 //! State transition types
 
-use crate::account_map::{AccountMap, AccountSet, EntryConstantSize, PubkeyAndEntry};
 use crate::error::LidoError;
 use crate::metrics::Metrics;
 use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
 use anchor_lang::prelude::*;
 use std::ops::Range;
+use crate::validators::{Validators, PubkeyAndEntry};
+use crate::maintainers::Maintainers;
 
 pub const LIDO_VERSION: u8 = 0;
 
@@ -18,25 +19,14 @@ pub const LIDO_CONSTANT_SIZE: usize = 357;
 
 pub const VALIDATOR_CONSTANT_SIZE: usize = 89;
 
-pub type Validators = AccountMap<Validator>;
-
 impl Validators {
     pub fn iter_active(&self) -> impl Iterator<Item = &Validator> {
         self.iter_entries().filter(|&v| v.active)
     }
 
-    pub fn iter_active_entries(&self) -> impl Iterator<Item = &PubkeyAndEntry<Validator>> {
+    pub fn iter_active_entries(&self) -> impl Iterator<Item = &PubkeyAndEntry> {
         self.entries.iter().filter(|&v| v.entry.active)
     }
-}
-pub type Maintainers = AccountSet;
-
-impl EntryConstantSize for Validator {
-    const SIZE: usize = VALIDATOR_CONSTANT_SIZE;
-}
-
-impl EntryConstantSize for () {
-    const SIZE: usize = 0;
 }
 
 /// The exchange rate used for deposits and rewards distribution.

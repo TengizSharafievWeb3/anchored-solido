@@ -2,7 +2,9 @@ use anchor_lang::prelude::*;
 use std::collections::BTreeMap;
 
 use crate::metrics::Metrics;
-use crate::state::{ExchangeRate, FeeRecipients, Maintainers, Validators, LIDO_CONSTANT_SIZE};
+use crate::state::{ExchangeRate, FeeRecipients, LIDO_CONSTANT_SIZE};
+use crate::validators::Validators;
+use crate::maintainers::Maintainers;
 use crate::{Initialize, RewardDistribution};
 
 impl<'info> Initialize<'info> {

@@ -8,13 +8,14 @@ use solana_program::program_option::COption;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
-mod account_map;
 pub mod error;
 pub mod initialize;
 pub mod logic;
-mod metrics;
+pub mod metrics;
 pub mod state;
-mod token;
+pub mod token;
+pub mod validators;
+pub mod maintainers;
 
 #[program]
 pub mod asolido {

@@ -7,37 +7,37 @@ use anchor_lang::prelude::*;
 use solana_program::pubkey::Pubkey;
 
 use crate::error::LidoError;
+use crate::state::{Validator, VALIDATOR_CONSTANT_SIZE};
 
 /// An entry in `AccountMap`.
 #[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
-pub struct PubkeyAndEntry<T> {
+pub struct PubkeyAndEntry {
     pub pubkey: Pubkey,
-    pub entry: T,
+    pub entry: Validator,
 }
 
 /// A map from public key to `T`, implemented as a vector of key-value pairs.
 #[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
-pub struct AccountMap<T> {
-    pub entries: Vec<PubkeyAndEntry<T>>,
+pub struct Validators {
+    pub entries: Vec<PubkeyAndEntry>,
     pub maximum_entries: u32,
 }
+
 pub trait EntryConstantSize {
     const SIZE: usize;
 }
 
-pub type AccountSet = AccountMap<()>;
-
-impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
+impl Validators {
     /// Creates a new instance with the `maximum_entries` positions filled with the default value
     pub fn new_fill_default(maximum_entries: u32) -> Self {
         let entries = vec![
             PubkeyAndEntry {
                 pubkey: Pubkey::default(),
-                entry: T::default(),
+                entry: Validator::default(),
             };
             maximum_entries as usize
         ];
-        AccountMap {
+        Validators {
             entries,
             maximum_entries,
         }
@@ -45,7 +45,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
 
     /// Creates a new empty instance
     pub fn new(maximum_entries: u32) -> Self {
-        AccountMap {
+        Validators {
             entries: Vec::new(),
             maximum_entries,
         }
@@ -59,7 +59,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
         self.entries.is_empty()
     }
 
-    pub fn add(&mut self, address: Pubkey, value: T) -> std::result::Result<(), LidoError> {
+    pub fn add(&mut self, address: Pubkey, value: Validator) -> std::result::Result<(), LidoError> {
         if self.len() == self.maximum_entries as usize {
             return Err(LidoError::MaximumNumberOfAccountsExceeded);
         }
@@ -74,7 +74,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
         Ok(())
     }
 
-    pub fn remove(&mut self, address: &Pubkey) -> std::result::Result<T, LidoError> {
+    pub fn remove(&mut self, address: &Pubkey) -> std::result::Result<Validator, LidoError> {
         let idx = self
             .entries
             .iter()
@@ -83,7 +83,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
         Ok(self.entries.swap_remove(idx).entry)
     }
 
-    pub fn get(&self, address: &Pubkey) -> std::result::Result<&PubkeyAndEntry<T>, LidoError> {
+    pub fn get(&self, address: &Pubkey) -> std::result::Result<&PubkeyAndEntry, LidoError> {
         self.entries
             .iter()
             .find(|pe| &pe.pubkey == address)
@@ -93,7 +93,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
     pub fn get_mut(
         &mut self,
         address: &Pubkey,
-    ) -> std::result::Result<&mut PubkeyAndEntry<T>, LidoError> {
+    ) -> std::result::Result<&mut PubkeyAndEntry, LidoError> {
         self.entries
             .iter_mut()
             .find(|pe| &pe.pubkey == address)
@@ -103,7 +103,7 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
     /// Return how many bytes are needed to serialize an instance holding `max_entries`.
     pub fn required_bytes(max_entries: usize) -> usize {
         let key_size = std::mem::size_of::<Pubkey>();
-        let value_size = T::SIZE;
+        let value_size = VALIDATOR_CONSTANT_SIZE;
         let entry_size = key_size + value_size;
 
         // 8 bytes for the length and u32 field, then the entries themselves.
@@ -113,105 +113,47 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
     /// Return how many entries could fit in a buffer of the given size.
     pub fn maximum_entries(buffer_size: usize) -> usize {
         let key_size = std::mem::size_of::<Pubkey>();
-        let value_size = T::SIZE;
+        let value_size = VALIDATOR_CONSTANT_SIZE;
         let entry_size = key_size + value_size;
 
         buffer_size.saturating_sub(8) / entry_size
     }
 
     /// Iterate just the values, not the keys.
-    pub fn iter_entries(&self) -> IterEntries<T> {
+    pub fn iter_entries(&self) -> IterEntries {
         IterEntries {
             iter: self.entries.iter(),
         }
     }
 
     /// Iterate just the values mutably, not the keys.
-    pub fn iter_entries_mut(&mut self) -> IterEntriesMut<T> {
+    pub fn iter_entries_mut(&mut self) -> IterEntriesMut {
         IterEntriesMut {
             iter: self.entries.iter_mut(),
         }
     }
 }
 
-pub struct IterEntries<'a, T: 'a> {
-    iter: std::slice::Iter<'a, PubkeyAndEntry<T>>,
+pub struct IterEntries<'a> {
+    iter: std::slice::Iter<'a, PubkeyAndEntry>,
 }
 
-impl<'a, T: 'a> std::iter::Iterator for IterEntries<'a, T> {
-    type Item = &'a T;
+impl<'a> std::iter::Iterator for IterEntries<'a> {
+    type Item = &'a Validator;
 
-    fn next(&mut self) -> Option<&'a T> {
+    fn next(&mut self) -> Option<&'a Validator> {
         self.iter.next().map(|pubkey_entry| &pubkey_entry.entry)
     }
 }
 
-pub struct IterEntriesMut<'a, T: 'a> {
-    iter: std::slice::IterMut<'a, PubkeyAndEntry<T>>,
+pub struct IterEntriesMut<'a> {
+    iter: std::slice::IterMut<'a, PubkeyAndEntry>,
 }
 
-impl<'a, T: 'a> std::iter::Iterator for IterEntriesMut<'a, T> {
-    type Item = &'a mut T;
+impl<'a> std::iter::Iterator for IterEntriesMut<'a> {
+    type Item = &'a mut Validator;
 
-    fn next(&mut self) -> Option<&'a mut T> {
+    fn next(&mut self) -> Option<&'a mut Validator> {
         self.iter.next().map(|pubkey_entry| &mut pubkey_entry.entry)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    impl EntryConstantSize for u32 {
-        const SIZE: usize = 4;
-    }
-
-    #[test]
-    fn test_account_map_limit() {
-        let mut map = AccountMap::new(1);
-        let result_0 = map.add(Pubkey::new_unique(), 0_u32);
-        let result_1 = map.add(Pubkey::new_unique(), 1_u32);
-        assert_eq!(result_0, Ok(()));
-        assert_eq!(result_1, Err(LidoError::MaximumNumberOfAccountsExceeded));
-    }
-
-    #[test]
-    fn test_account_map_duplicate() {
-        let mut map = AccountMap::new(2);
-        let key = Pubkey::new_unique();
-        let result_0 = map.add(key, 0_u32);
-        let result_1 = map.add(key, 1_u32);
-        assert_eq!(result_0, Ok(()));
-        assert_eq!(result_1, Err(LidoError::DuplicatedEntry));
-    }
-
-    #[test]
-    fn test_account_map_add_remove() {
-        let mut map = AccountMap::new(1);
-        let key = Pubkey::new_unique();
-        map.add(key, 0_u32).unwrap();
-
-        assert_eq!(map.get(&key).map(|pe| pe.entry), Ok(0));
-        assert_eq!(map.get_mut(&key).map(|pe| pe.entry), Ok(0));
-        assert_eq!(map.remove(&key), Ok(0));
-
-        assert_eq!(map.get(&key), Err(LidoError::InvalidAccountMember));
-        assert_eq!(map.get_mut(&key), Err(LidoError::InvalidAccountMember));
-        assert_eq!(map.remove(&key), Err(LidoError::InvalidAccountMember));
-    }
-
-    #[test]
-    fn test_account_map_iter_entries() {
-        let mut map: AccountMap<u32> = AccountMap::new(2);
-        map.add(Pubkey::new_unique(), 0).unwrap();
-        map.add(Pubkey::new_unique(), 1).unwrap();
-
-        for entry in map.iter_entries_mut() {
-            *entry = 2;
-        }
-
-        for entry in map.iter_entries() {
-            assert_eq!(*entry, 2);
-        }
     }
 }
