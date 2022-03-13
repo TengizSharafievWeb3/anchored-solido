@@ -9,7 +9,6 @@ use crate::metrics::Metrics;
 use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
 use anchor_lang::prelude::*;
-use solana_program::clock::Epoch;
 use std::ops::Range;
 
 pub const LIDO_VERSION: u8 = 0;
@@ -110,7 +109,7 @@ impl EntryConstantSize for () {
 #[derive(Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq)]
 pub struct ExchangeRate {
     /// The epoch in which we last called `UpdateExchangeRate`.
-    pub computed_in_epoch: Epoch,
+    pub computed_in_epoch: u64,
 
     /// The amount of stSOL that existed at that time.
     pub st_sol_supply: StLamports,
