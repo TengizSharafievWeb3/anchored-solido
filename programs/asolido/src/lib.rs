@@ -1,16 +1,30 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{TokenAccount, Token, Mint};
+use solana_program::program_option::COption;
+use crate::state::{Lido, Reserve};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
+pub mod initialize;
+pub mod state;
+pub mod logic;
+pub mod error;
+mod account_map;
+
+
 #[program]
 pub mod asolido {
+
+    use crate::state::LIDO_VERSION;
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>,
-                      reward_distribution: RewardDistribution,
-                      max_validators: u32,
-                      max_maintainers: u32) -> Result<()> {
-        Ok(())
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        reward_distribution: RewardDistribution,
+        max_validators: u32,
+        max_maintainers: u32,
+    ) -> Result<()> {
+        ctx.accounts.process(LIDO_VERSION, reward_distribution, max_validators, max_maintainers)
     }
 
     /// Deposit a given amount of SOL.
@@ -58,7 +72,10 @@ pub mod asolido {
         Ok(())
     }
 
-    pub fn change_reward_distribution(ctx: Context<ChangeRewardDistribution>, new_reward_distribution: RewardDistribution) -> Result<()> {
+    pub fn change_reward_distribution(
+        ctx: Context<ChangeRewardDistribution>,
+        new_reward_distribution: RewardDistribution,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -99,8 +116,50 @@ pub mod asolido {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+/// Seed for reserve account that holds SOL.
+pub const RESERVE_ACCOUNT: &[u8] = b"reserve_account";
+
+/// Mint authority, mints StSol.
+pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
+
+/// Seed for managing the stake.
+pub const STAKE_AUTHORITY: &[u8] = b"stake_authority";
+
+/// Additional seed for active/activating validator stake accounts.
+pub const VALIDATOR_STAKE_ACCOUNT: &[u8] = b"validator_stake_account";
+/// Additional seed for inactive/deactivating validator stake accounts.
+pub const VALIDATOR_UNSTAKE_ACCOUNT: &[u8] = b"validator_unstake_account";
+
+/// Authority responsible for withdrawing the stake rewards.
+pub const REWARDS_WITHDRAW_AUTHORITY: &[u8] = b"rewards_withdraw_authority";
+
+// ----------------------------------------------------------------------------
+
 #[derive(Accounts)]
-pub struct Initialize {}
+pub struct Initialize<'info> {
+    #[account(init, payer = payer)]
+    pub lido: Account<'info, Lido>,
+
+    pub manager: UncheckedAccount<'info>,
+    #[account(rent_exempt = enforce)]
+    pub st_sol_mint: Account<'info, Mint>,
+    #[account(constraint = treasury_account.mint == st_sol_mint.key() @ error::LidoError::InvalidFeeRecipient)]
+    pub treasury_account: Account<'info, TokenAccount>,
+    #[account(constraint = developer_account.mint == st_sol_mint.key() @ error::LidoError::InvalidFeeRecipient)]
+    pub developer_account: Account<'info, TokenAccount>,
+    #[account(rent_exempt = enforce, seeds = [RESERVE_ACCOUNT.as_ref()], bump)]
+    pub reserve_account: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+// ----------------------------------------------------------------------------
 
 #[derive(Accounts)]
 pub struct Deposit {}
