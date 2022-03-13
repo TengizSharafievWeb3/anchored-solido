@@ -14,6 +14,10 @@ use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
 
 pub const LIDO_VERSION: u8 = 0;
+
+/// Size of a serialized `Lido` struct excluding validators and maintainers.
+pub const LIDO_CONSTANT_SIZE: usize = 357 + 8;
+
 pub const VALIDATOR_CONSTANT_SIZE: usize = 89;
 
 
@@ -333,7 +337,80 @@ pub struct FeeRecipients {
     pub developer_account: Pubkey,
 }
 
-// impl RewardDistribution
+impl RewardDistribution {
+    pub fn sum(&self) -> u64 {
+        // These adds don't overflow because we widen from u32 to u64 first.
+        self.treasury_fee as u64
+            + self.validation_fee as u64
+            + self.developer_fee as u64
+            + self.st_sol_appreciation as u64
+    }
+
+    pub fn treasury_fraction(&self) -> Rational {
+        Rational {
+            numerator: self.treasury_fee as u64,
+            denominator: self.sum(),
+        }
+    }
+
+    pub fn validation_fraction(&self) -> Rational {
+        Rational {
+            numerator: self.validation_fee as u64,
+            denominator: self.sum(),
+        }
+    }
+
+    pub fn developer_fraction(&self) -> Rational {
+        Rational {
+            numerator: self.developer_fee as u64,
+            denominator: self.sum(),
+        }
+    }
+
+    /// Split the reward according to the distribution defined in this instance.
+    ///
+    /// Fees are all rounded down, and the remainder goes to stSOL appreciation.
+    /// This means that the outputs may not sum to the input, even when
+    /// `st_sol_appreciation` is 0.
+    ///
+    /// Returns the fee amounts in SOL. stSOL should be minted for those when
+    /// they get distributed. This acts like a deposit: it is like the fee
+    /// recipients received their fee in SOL outside of Solido, and then
+    /// deposited it. The remaining SOL, which is not taken as a fee, acts as a
+    /// donation to the pool, and makes the SOL value of stSOL go up. It is not
+    /// included in the output, as nothing needs to be done to handle it.
+    pub fn split_reward(&self, amount: Lamports, num_validators: u64) -> token::Result<Fees> {
+        use std::ops::Add;
+
+        let treasury_amount = (amount * self.treasury_fraction())?;
+        let developer_amount = (amount * self.developer_fraction())?;
+
+        // The actual amount that goes to validation can be a tiny bit lower
+        // than the target amount, when the number of validators does not divide
+        // the target amount. The loss is at most `num_validators` Lamports.
+        let validation_amount = (amount * self.validation_fraction())?;
+        let reward_per_validator = (validation_amount / num_validators)?;
+
+        // Sanity check: We should not produce more fees than we had to split in
+        // the first place.
+        let total_fees = Lamports(0)
+            .add(treasury_amount)?
+            .add(developer_amount)?
+            .add((reward_per_validator * num_validators)?)?;
+        assert!(total_fees <= amount);
+
+        let st_sol_appreciation_amount = (amount - total_fees)?;
+
+        let result = Fees {
+            treasury_amount,
+            reward_per_validator,
+            developer_amount,
+            st_sol_appreciation_amount,
+        };
+
+        Ok(result)
+    }
+}
 
 /// The result of [`RewardDistribution::split_reward`].
 ///
@@ -355,3 +432,318 @@ pub struct Fees {
 #[account]
 #[derive(Default)]
 pub struct Reserve {}
+
+#[cfg(test)]
+mod test_lido {
+    use super::*;
+    use super::Fees;
+
+    #[test]
+    fn test_account_map_required_bytes_relates_to_maximum_entries() {
+        for buffer_size in 0..8_000 {
+            let max_entries = Validators::maximum_entries(buffer_size);
+            let needed_size = Validators::required_bytes(max_entries);
+            assert!(
+                needed_size <= buffer_size || max_entries == 0,
+                "Buffer of len {} can fit {} validators which need {} bytes.",
+                buffer_size,
+                max_entries,
+                needed_size,
+            );
+
+            let max_entries = Maintainers::maximum_entries(buffer_size);
+            let needed_size = Maintainers::required_bytes(max_entries);
+            assert!(
+                needed_size <= buffer_size || max_entries == 0,
+                "Buffer of len {} can fit {} maintainers which need {} bytes.",
+                buffer_size,
+                max_entries,
+                needed_size,
+            );
+        }
+    }
+
+    #[test]
+    fn test_exchange_when_balance_and_supply_are_zero() {
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(0),
+            st_sol_supply: StLamports(0),
+        };
+        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+    }
+
+    #[test]
+    fn test_exchange_when_rate_is_one_to_two() {
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(2),
+            st_sol_supply: StLamports(1),
+        };
+        // If every stSOL is worth 1 SOL, I should get half my SOL amount in stSOL.
+        assert_eq!(rate.exchange_sol(Lamports(44)), Ok(StLamports(22)));
+    }
+
+    #[test]
+    fn test_exchange_when_one_balance_is_zero() {
+        // This case can occur when we donate some SOL to Lido, instead of
+        // depositing it. There will not be any stSOL, but there will be SOL.
+        // In this case it doesn't matter which exchange rate we use, the first
+        // deposits will mint some stSOL, and that stSOL will own all of the
+        // pool. The rate we choose is only nominal, it controls the initial
+        // stSOL:SOL rate, and we choose it to be 1:1.
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(100),
+            st_sol_supply: StLamports(0),
+        };
+        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+
+        // This case should not occur in the wild, but in any case, use a 1:1 rate here too.
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(0),
+            st_sol_supply: StLamports(100),
+        };
+        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+    }
+
+    #[test]
+    fn test_exchange_sol_to_st_sol_to_sol_roundtrips() {
+        // There are many cases where depositing some amount of SOL and then
+        // exchanging it back, does not actually roundtrip. There can be small
+        // losses due to integer arithmetic rounding, but there can even be large
+        // losses, if the sol_balance and st_sol_supply are very different. For
+        // example, if sol_balance = 10, st_sol_supply = 1, then if you deposit
+        // 9 Lamports, you are entitled to 0.1 stLamports, which gets rounded
+        // down to 0, and you lose your full 9 Lamports.
+        // So here we test a few of those cases as a sanity check, but it's not
+        // a general roundtripping test.
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(100),
+            st_sol_supply: StLamports(50),
+        };
+        let sol_1 = Lamports(10);
+        let st_sol = rate.exchange_sol(sol_1).unwrap();
+        let sol_2 = rate.exchange_st_sol(st_sol).unwrap();
+        assert_eq!(sol_2, sol_1);
+
+        // In this case, one Lamport is lost in a rounding error, because
+        // `amount * st_sol_supply` is not a multiple of `sol_balance`.
+        let rate = ExchangeRate {
+            computed_in_epoch: 0,
+            sol_balance: Lamports(110_000),
+            st_sol_supply: StLamports(100_000),
+        };
+        let sol_1 = Lamports(1_000);
+        let st_sol = rate.exchange_sol(sol_1).unwrap();
+        let sol_2 = rate.exchange_st_sol(st_sol).unwrap();
+        assert_eq!(sol_2, Lamports(999));
+    }
+
+    /*
+    #[test]
+    fn test_lido_for_deposit_wrong_mint() {
+        let mut lido = Lido::default();
+        lido.st_sol_mint = Pubkey::new_unique();
+
+        let pubkey = Pubkey::new_unique();
+        let mut lamports = 100;
+        let mut data = [0_u8];
+        let is_signer = false;
+        let is_writable = false;
+        let owner = spl_token::id();
+        let executable = false;
+        let rent_epoch = 1;
+        let fake_mint_account = AccountInfo::new(
+            &pubkey,
+            is_signer,
+            is_writable,
+            &mut lamports,
+            &mut data,
+            &owner,
+            executable,
+            rent_epoch,
+        );
+        let result = lido.check_mint_is_st_sol_mint(&fake_mint_account);
+
+        let expected_error: ProgramError = LidoError::InvalidStSolAccount.into();
+        assert_eq!(result, Err(expected_error));
+    }
+
+    #[test]
+    fn test_get_sol_balance() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let rent = &Rent::default();
+        let mut lido = Lido::default();
+        let key = Pubkey::default();
+        let mut amount = rent.minimum_balance(0);
+        let mut reserve_account =
+            AccountInfo::new(&key, true, true, &mut amount, &mut [], &key, false, 0);
+
+        assert_eq!(
+            lido.get_sol_balance(&rent, &reserve_account),
+            Ok(Lamports(0))
+        );
+
+        let mut new_amount = rent.minimum_balance(0) + 10;
+        reserve_account.lamports = Rc::new(RefCell::new(&mut new_amount));
+
+        assert_eq!(
+            lido.get_sol_balance(&rent, &reserve_account),
+            Ok(Lamports(10))
+        );
+
+        lido.validators.maximum_entries = 1;
+        lido.validators
+            .add(Pubkey::new_unique(), Validator::new(Pubkey::new_unique()))
+            .unwrap();
+        lido.validators.entries[0].entry.stake_accounts_balance = Lamports(37);
+        assert_eq!(
+            lido.get_sol_balance(&rent, &reserve_account),
+            Ok(Lamports(10 + 37))
+        );
+
+        lido.validators.entries[0].entry.stake_accounts_balance = Lamports(u64::MAX);
+
+        assert_eq!(
+            lido.get_sol_balance(&rent, &reserve_account),
+            Err(LidoError::CalculationFailure)
+        );
+
+        let mut new_amount = u64::MAX;
+        reserve_account.lamports = Rc::new(RefCell::new(&mut new_amount));
+        // The amount here is more than the rent exemption that gets discounted
+        // from the reserve, causing an overflow.
+        lido.validators.entries[0].entry.stake_accounts_balance = Lamports(5_000_000);
+
+        assert_eq!(
+            lido.get_sol_balance(&rent, &reserve_account),
+            Err(LidoError::CalculationFailure)
+        );
+    }
+
+    #[test]
+    fn test_get_st_sol_supply() {
+        use solana_program::program_option::COption;
+
+        let mint = Mint {
+            mint_authority: COption::None,
+            supply: 200_000,
+            decimals: 9,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        let mut data = [0_u8; 128];
+        mint.pack_into_slice(&mut data);
+
+        let mut lido = Lido::default();
+        let mint_address = Pubkey::default();
+        let mut amount = 0;
+        let is_signer = false;
+        let is_writable = false;
+        let executable = false;
+        let rent_epoch = 0;
+        let st_sol_mint = AccountInfo::new(
+            &mint_address,
+            is_signer,
+            is_writable,
+            &mut amount,
+            &mut data,
+            &mint_address,
+            executable,
+            rent_epoch,
+        );
+
+        lido.st_sol_mint = mint_address;
+
+        assert_eq!(
+            lido.get_st_sol_supply(&st_sol_mint),
+            Ok(StLamports(200_000)),
+        );
+
+        lido.validators.maximum_entries = 1;
+        lido.validators
+            .add(Pubkey::new_unique(), Validator::new(Pubkey::new_unique()))
+            .unwrap();
+        lido.validators.entries[0].entry.fee_credit = StLamports(37);
+        assert_eq!(
+            lido.get_st_sol_supply(&st_sol_mint),
+            Ok(StLamports(200_000 + 37))
+        );
+
+        lido.st_sol_mint = Pubkey::new_unique();
+
+        assert_eq!(
+            lido.get_st_sol_supply(&st_sol_mint),
+            Err(LidoError::InvalidStSolAccount.into())
+        );
+    } */
+
+    #[test]
+    fn test_split_reward() {
+        let mut spec = RewardDistribution {
+            treasury_fee: 3,
+            validation_fee: 2,
+            developer_fee: 1,
+            st_sol_appreciation: 0,
+        };
+
+        assert_eq!(
+            // In this case the amount can be split exactly,
+            // there is no remainder.
+            spec.split_reward(Lamports(600), 1).unwrap(),
+            Fees {
+                treasury_amount: Lamports(300),
+                reward_per_validator: Lamports(200),
+                developer_amount: Lamports(100),
+                st_sol_appreciation_amount: Lamports(0),
+            },
+        );
+
+        assert_eq!(
+            // In this case the amount cannot be split exactly, all fees are
+            // rounded down.
+            spec.split_reward(Lamports(1_000), 4).unwrap(),
+            Fees {
+                treasury_amount: Lamports(500),
+                reward_per_validator: Lamports(83),
+                developer_amount: Lamports(166),
+                st_sol_appreciation_amount: Lamports(2),
+            },
+        );
+
+        // If we use 3%, 2%, 1% fee, and the remaining 94% go to stSOL appreciation,
+        // we should see 3%, 2%, and 1% fee.
+        spec.st_sol_appreciation = 94;
+        assert_eq!(
+            spec.split_reward(Lamports(100), 1).unwrap(),
+            Fees {
+                treasury_amount: Lamports(3),
+                reward_per_validator: Lamports(2),
+                developer_amount: Lamports(1),
+                st_sol_appreciation_amount: Lamports(94),
+            },
+        );
+
+        let spec_coprime = RewardDistribution {
+            treasury_fee: 17,
+            validation_fee: 23,
+            developer_fee: 19,
+            st_sol_appreciation: 0,
+        };
+        assert_eq!(
+            spec_coprime.split_reward(Lamports(1_000), 1).unwrap(),
+            Fees {
+                treasury_amount: Lamports(288),
+                reward_per_validator: Lamports(389),
+                developer_amount: Lamports(322),
+                st_sol_appreciation_amount: Lamports(1),
+            },
+        );
+    }
+
+}

@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{TokenAccount, Token, Mint};
-use solana_program::program_option::COption;
 use crate::state::{Lido, Reserve};
 use crate::token::{Lamports, StLamports};
 use crate::state::{LIDO_VERSION, RewardDistribution};
