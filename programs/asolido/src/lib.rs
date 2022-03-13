@@ -3,6 +3,7 @@ use anchor_spl::token::{TokenAccount, Token, Mint};
 use solana_program::program_option::COption;
 use crate::state::{Lido, Reserve};
 use crate::token::{Lamports, StLamports};
+use crate::state::{LIDO_VERSION, RewardDistribution};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -17,7 +18,6 @@ mod token;
 #[program]
 pub mod asolido {
 
-    use crate::state::LIDO_VERSION;
     use super::*;
 
     pub fn initialize(
@@ -207,14 +207,3 @@ pub struct RemoveMaintainer {}
 
 #[derive(Accounts)]
 pub struct MergeStake {}
-
-/// Determines how rewards are split up among these parties, represented as the
-/// number of parts of the total. For example, if each party has 1 part, then
-/// they all get an equal share of the reward.
-#[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
-pub struct RewardDistribution {
-    pub treasury_fee: u32,
-    pub validation_fee: u32,
-    pub developer_fee: u32,
-    pub st_sol_appreciation: u32,
-}

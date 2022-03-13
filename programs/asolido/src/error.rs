@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use num_derive::FromPrimitive;
+use crate::token::ArithmeticError;
 
 #[error_code]
 #[derive(Eq, FromPrimitive, PartialEq)]
@@ -157,4 +158,10 @@ pub enum LidoError {
 
     /// We expected the StSol account to be owned by the SPL token program.
     InvalidStSolAccountOwner,
+}
+
+impl From<ArithmeticError> for LidoError {
+    fn from(_: ArithmeticError) -> Self {
+        LidoError::CalculationFailure
+    }
 }
