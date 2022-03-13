@@ -64,14 +64,14 @@ pub struct Metrics {
 impl Metrics {
     pub fn new() -> Self {
         Self {
-            fee_treasury_sol_total: Lamports(0),
-            fee_validation_sol_total: Lamports(0),
-            fee_developer_sol_total: Lamports(0),
-            st_sol_appreciation_sol_total: Lamports(0),
+            fee_treasury_sol_total: Lamports::new(0),
+            fee_validation_sol_total: Lamports::new(0),
+            fee_developer_sol_total: Lamports::new(0),
+            st_sol_appreciation_sol_total: Lamports::new(0),
 
-            fee_treasury_st_sol_total: StLamports(0),
-            fee_validation_st_sol_total: StLamports(0),
-            fee_developer_st_sol_total: StLamports(0),
+            fee_treasury_st_sol_total: StLamports::new(0),
+            fee_validation_st_sol_total: StLamports::new(0),
+            fee_developer_st_sol_total: StLamports::new(0),
 
             deposit_amount: LamportsHistogram::new(),
             withdraw_amount: WithdrawMetric::default(),
@@ -152,24 +152,24 @@ pub struct LamportsHistogram {
 impl LamportsHistogram {
     #[rustfmt::skip]
     pub const BUCKET_UPPER_BOUNDS: [Lamports; 12] = [
-        Lamports(              100_000),   // 0.000_1 SOL
-        Lamports(            1_000_000),     // 0.001 SOL
-        Lamports(           10_000_000),      // 0.01 SOL
-        Lamports(          100_000_000),       // 0.1 SOL
-        Lamports(        1_000_000_000),         // 1 SOL
-        Lamports(       10_000_000_000),        // 10 SOL
-        Lamports(      100_000_000_000),       // 100 SOL
-        Lamports(    1_000_000_000_000),     // 1_000 SOL
-        Lamports(   10_000_000_000_000),    // 10_000 SOL
-        Lamports(  100_000_000_000_000),   // 100_000 SOL
-        Lamports(1_000_000_000_000_000), // 1_000_000 SOL
-        Lamports(u64::MAX),
+        Lamports { amount:              100_000},   // 0.000_1 SOL
+        Lamports { amount:             1_000_00},     // 0.001 SOL
+        Lamports { amount:           10_000_000},      // 0.01 SOL
+        Lamports { amount:          100_000_000},       // 0.1 SOL
+        Lamports { amount:        1_000_000_000},         // 1 SOL
+        Lamports { amount:       10_000_000_000},        // 10 SOL
+        Lamports { amount:      100_000_000_000},       // 100 SOL
+        Lamports { amount:    1_000_000_000_000},     // 1_000 SOL
+        Lamports { amount:   10_000_000_000_000},    // 10_000 SOL
+        Lamports { amount:  100_000_000_000_000},   // 100_000 SOL
+        Lamports { amount:1_000_000_000_000_000}, // 1_000_000 SOL
+        Lamports { amount:u64::MAX},
     ];
 
     pub fn new() -> Self {
         Self {
             counts: [0; 12],
-            total: Lamports(0),
+            total: Lamports::new(0),
         }
     }
 
@@ -221,42 +221,44 @@ mod test {
     #[test]
     fn test_metrics_observe_fee_treasury() {
         let mut m = Metrics::new();
-        m.observe_fee_treasury(Lamports(100), StLamports(100))
+        m.observe_fee_treasury(Lamports::new(100), StLamports::new(100))
             .unwrap();
-        m.observe_fee_treasury(Lamports(100), StLamports(80))
+        m.observe_fee_treasury(Lamports::new(100), StLamports::new(80))
             .unwrap();
-        assert_eq!(m.fee_treasury_sol_total, Lamports(200));
-        assert_eq!(m.fee_treasury_st_sol_total, StLamports(180));
+        assert_eq!(m.fee_treasury_sol_total, Lamports::new(200));
+        assert_eq!(m.fee_treasury_st_sol_total, StLamports::new(180));
     }
 
     #[test]
     fn test_metrics_observe_fee_validation() {
         let mut m = Metrics::new();
-        m.observe_fee_validation(Lamports(100), StLamports(100))
+        m.observe_fee_validation(Lamports::new(100), StLamports::new(100))
             .unwrap();
-        m.observe_fee_validation(Lamports(100), StLamports(80))
+        m.observe_fee_validation(Lamports::new(100), StLamports::new(80))
             .unwrap();
-        assert_eq!(m.fee_validation_sol_total, Lamports(200));
-        assert_eq!(m.fee_validation_st_sol_total, StLamports(180));
+        assert_eq!(m.fee_validation_sol_total, Lamports::new(200));
+        assert_eq!(m.fee_validation_st_sol_total, StLamports::new(180));
     }
 
     #[test]
     fn test_metrics_observe_fee_developer() {
         let mut m = Metrics::new();
-        m.observe_fee_developer(Lamports(100), StLamports(100))
+        m.observe_fee_developer(Lamports::new(100), StLamports::new(100))
             .unwrap();
-        m.observe_fee_developer(Lamports(100), StLamports(80))
+        m.observe_fee_developer(Lamports::new(100), StLamports::new(80))
             .unwrap();
-        assert_eq!(m.fee_developer_sol_total, Lamports(200));
-        assert_eq!(m.fee_developer_st_sol_total, StLamports(180));
+        assert_eq!(m.fee_developer_sol_total, Lamports::new(200));
+        assert_eq!(m.fee_developer_st_sol_total, StLamports::new(180));
     }
 
     #[test]
     fn test_metrics_observe_reward_st_sol_appreciation() {
         let mut m = Metrics::new();
-        m.observe_reward_st_sol_appreciation(Lamports(100)).unwrap();
-        m.observe_reward_st_sol_appreciation(Lamports(200)).unwrap();
-        assert_eq!(m.st_sol_appreciation_sol_total, Lamports(300));
+        m.observe_reward_st_sol_appreciation(Lamports::new(100))
+            .unwrap();
+        m.observe_reward_st_sol_appreciation(Lamports::new(200))
+            .unwrap();
+        assert_eq!(m.st_sol_appreciation_sol_total, Lamports::new(300));
     }
 
     #[test]
@@ -264,16 +266,17 @@ mod test {
         let mut m = Metrics::new();
 
         // 0.000_000_100 SOL, falls in bucket 0 (<= 0.000_1 SOL).
-        m.observe_deposit(Lamports(100)).unwrap();
+        m.observe_deposit(Lamports::new(100)).unwrap();
 
         // 1 SOL, falls in bucket 4. (<= 1 SOL)
-        m.observe_deposit(Lamports(1_000_000_000)).unwrap();
+        m.observe_deposit(Lamports::new(1_000_000_000)).unwrap();
 
         // 57 SOL, falls in bucket 6. (<= 100 SOL)
-        m.observe_deposit(Lamports(57_000_000_000)).unwrap();
+        m.observe_deposit(Lamports::new(57_000_000_000)).unwrap();
 
         // 21M SOL, falls in bucket 11. (<= u64::MAX SOL).
-        m.observe_deposit(Lamports(21_000_000_000_000_000)).unwrap();
+        m.observe_deposit(Lamports::new(21_000_000_000_000_000))
+            .unwrap();
 
         assert_eq!(m.deposit_amount.counts[0], 1);
         assert_eq!(m.deposit_amount.counts[1], 1);
@@ -289,6 +292,9 @@ mod test {
         assert_eq!(m.deposit_amount.counts[11], 4);
 
         assert_eq!(m.deposit_amount.num_observations(), 4);
-        assert_eq!(m.deposit_amount.total, Lamports(21_000_058_000_000_100));
+        assert_eq!(
+            m.deposit_amount.total,
+            Lamports::new(21_000_058_000_000_100)
+        );
     }
 }

@@ -69,26 +69,19 @@ pub type Result<T> = std::result::Result<T, ArithmeticError>;
 #[macro_export]
 macro_rules! impl_token {
     ($TokenLamports:ident, $symbol:expr, decimals = $decimals:expr) => {
-        #[derive(
-            Copy,
-            Clone,
-            Default,
-            Eq,
-            Ord,
-            PartialEq,
-            PartialOrd,
-            AnchorDeserialize,
-            AnchorSerialize,
-        )]
-        pub struct $TokenLamports(pub u64);
+        impl $TokenLamports {
+            pub fn new(amount: u64) -> $TokenLamports {
+                $TokenLamports { amount }
+            }
+        }
 
         impl fmt::Display for $TokenLamports {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     f,
                     "{}.{} {}",
-                    self.0 / 10u64.pow($decimals),
-                    &format!("{:0>9}", self.0 % 10u64.pow($decimals))[9 - $decimals..],
+                    self.amount / 10u64.pow($decimals),
+                    &format!("{:0>9}", self.amount % 10u64.pow($decimals))[9 - $decimals..],
                     $symbol
                 )
             }
@@ -105,11 +98,11 @@ macro_rules! impl_token {
             fn mul(self, other: Rational) -> Result<$TokenLamports> {
                 // This multiplication cannot overflow, because we expand the
                 // u64s into u128, and u64::MAX * u64::MAX < u128::MAX.
-                let result_u128 = ((self.0 as u128) * (other.numerator as u128))
+                let result_u128 = ((self.amount as u128) * (other.numerator as u128))
                     .checked_div(other.denominator as u128)
                     .ok_or(ArithmeticError)?;
                 u64::try_from(result_u128)
-                    .map($TokenLamports)
+                    .map($TokenLamports::new)
                     .map_err(|_| ArithmeticError)
             }
         }
@@ -117,9 +110,9 @@ macro_rules! impl_token {
         impl Mul<u64> for $TokenLamports {
             type Output = Result<$TokenLamports>;
             fn mul(self, other: u64) -> Result<$TokenLamports> {
-                self.0
+                self.amount
                     .checked_mul(other)
-                    .map($TokenLamports)
+                    .map($TokenLamports::new)
                     .ok_or(ArithmeticError)
             }
         }
@@ -127,9 +120,9 @@ macro_rules! impl_token {
         impl Div<u64> for $TokenLamports {
             type Output = Result<$TokenLamports>;
             fn div(self, other: u64) -> Result<$TokenLamports> {
-                self.0
+                self.amount
                     .checked_div(other)
-                    .map($TokenLamports)
+                    .map($TokenLamports::new)
                     .ok_or(ArithmeticError)
             }
         }
@@ -137,9 +130,9 @@ macro_rules! impl_token {
         impl Sub<$TokenLamports> for $TokenLamports {
             type Output = Result<$TokenLamports>;
             fn sub(self, other: $TokenLamports) -> Result<$TokenLamports> {
-                self.0
-                    .checked_sub(other.0)
-                    .map($TokenLamports)
+                self.amount
+                    .checked_sub(other.amount)
+                    .map($TokenLamports::new)
                     .ok_or(ArithmeticError)
             }
         }
@@ -147,16 +140,16 @@ macro_rules! impl_token {
         impl Add<$TokenLamports> for $TokenLamports {
             type Output = Result<$TokenLamports>;
             fn add(self, other: $TokenLamports) -> Result<$TokenLamports> {
-                self.0
-                    .checked_add(other.0)
-                    .map($TokenLamports)
+                self.amount
+                    .checked_add(other.amount)
+                    .map($TokenLamports::new)
                     .ok_or(ArithmeticError)
             }
         }
 
         impl Sum<$TokenLamports> for Result<$TokenLamports> {
             fn sum<I: Iterator<Item = $TokenLamports>>(iter: I) -> Self {
-                let mut sum = $TokenLamports(0);
+                let mut sum = $TokenLamports::new(0);
                 for item in iter {
                     sum = (sum + item)?;
                 }
@@ -213,13 +206,26 @@ macro_rules! impl_token {
                     exponent -= 1;
                 }
 
-                Ok($TokenLamports(value))
+                Ok($TokenLamports::new(value))
             }
         }
     };
 }
 
+#[derive(
+    Copy, Clone, Default, Eq, Ord, PartialEq, PartialOrd, AnchorDeserialize, AnchorSerialize,
+)]
+pub struct Lamports {
+    pub amount: u64,
+}
 impl_token!(Lamports, "SOL", decimals = 9);
+
+#[derive(
+    Copy, Clone, Default, Eq, Ord, PartialEq, PartialOrd, AnchorDeserialize, AnchorSerialize,
+)]
+pub struct StLamports {
+    pub amount: u64,
+}
 impl_token!(StLamports, "stSOL", decimals = 9);
 
 #[cfg(test)]
@@ -227,20 +233,26 @@ pub mod test {
     use super::*;
     use std::str::FromStr;
 
+    #[derive(
+        Copy, Clone, Default, Eq, Ord, PartialEq, PartialOrd, AnchorDeserialize, AnchorSerialize,
+    )]
+    pub struct MicroUst {
+        pub amount: u64,
+    }
     impl_token!(MicroUst, "UST", decimals = 6);
 
     #[test]
     fn test_lamports_from_str_roundtrip() {
         let mut x = 0;
         while x < u64::MAX / 17 {
-            let lamports_orig = Lamports(x);
+            let lamports_orig = Lamports::new(x);
             let lamports_string = format!("{}", lamports_orig);
             // Cut off the " SOL" suffix.
             let lamports_without_suffix = &lamports_string[..lamports_string.len() - 4];
             let lamports_reconstructed = Lamports::from_str(lamports_without_suffix).unwrap();
             assert_eq!(lamports_reconstructed, lamports_orig);
 
-            let ust_orig = MicroUst(x);
+            let ust_orig = MicroUst::new(x);
             let ust_string = format!("{}", ust_orig);
             // Cut off the " UST" suffix.
             let ust_without_suffix = &ust_string[..ust_string.len() - 4];
@@ -255,7 +267,7 @@ pub mod test {
     #[test]
     fn test_lamports_from_str_handles_more_than_f64() {
         let x = "9007199.254740993";
-        let expected = Lamports(9007199_254740993);
+        let expected = Lamports::new(9007199_254740993);
 
         // Parsing as integer from the start should work.
         assert_eq!(Lamports::from_str(x), Ok(expected));
@@ -263,21 +275,27 @@ pub mod test {
         // Parsing as float and casting to int does not work for this number,
         // because it doesn’t fit the f64 mantissa. If we would parse as f64,
         // we would lose one lamport.
-        assert_eq!((f64::from_str(x).unwrap() * 1e9) as u64, expected.0 - 1);
+        assert_eq!(
+            (f64::from_str(x).unwrap() * 1e9) as u64,
+            expected.amount - 1
+        );
     }
 
     #[test]
     fn test_lamports_from_str_examples() {
-        assert_eq!(Lamports::from_str("1_000"), Ok(Lamports(1_000_000_000_000)));
-        assert_eq!(Lamports::from_str("1"), Ok(Lamports(1_000_000_000)));
-        assert_eq!(Lamports::from_str("1."), Ok(Lamports(1_000_000_000)));
-        assert_eq!(Lamports::from_str("1.0"), Ok(Lamports(1_000_000_000)));
-        assert_eq!(Lamports::from_str("1.02"), Ok(Lamports(1_020_000_000)));
+        assert_eq!(
+            Lamports::from_str("1_000"),
+            Ok(Lamports::new(1_000_000_000_000))
+        );
+        assert_eq!(Lamports::from_str("1"), Ok(Lamports::new(1_000_000_000)));
+        assert_eq!(Lamports::from_str("1."), Ok(Lamports::new(1_000_000_000)));
+        assert_eq!(Lamports::from_str("1.0"), Ok(Lamports::new(1_000_000_000)));
+        assert_eq!(Lamports::from_str("1.02"), Ok(Lamports::new(1_020_000_000)));
         assert_eq!(
             Lamports::from_str("1.000_000_001"),
-            Ok(Lamports(1_000_000_001))
+            Ok(Lamports::new(1_000_000_001))
         );
-        assert_eq!(Lamports::from_str(".1"), Ok(Lamports(100_000_000)));
+        assert_eq!(Lamports::from_str(".1"), Ok(Lamports::new(100_000_000)));
 
         // No digits.
         assert!(Lamports::from_str("").is_err());
@@ -347,10 +365,16 @@ pub mod test {
 
     #[test]
     fn test_token_format() {
-        assert_eq!(format!("{}", Lamports(1)), "0.000000001 SOL");
-        assert_eq!(format!("{}", Lamports(1_000_000_002)), "1.000000002 SOL");
-        assert_eq!(format!("{}", MicroUst(1)), "0.000001 UST");
-        assert_eq!(format!("{}", MicroUst(1_000_000_002)), "1000.000002 UST");
+        assert_eq!(format!("{}", Lamports::new(1)), "0.000000001 SOL");
+        assert_eq!(
+            format!("{}", Lamports::new(1_000_000_002)),
+            "1.000000002 SOL"
+        );
+        assert_eq!(format!("{}", MicroUst::new(1)), "0.000001 UST");
+        assert_eq!(
+            format!("{}", MicroUst::new(1_000_000_002)),
+            "1000.000002 UST"
+        );
     }
 
     #[test]

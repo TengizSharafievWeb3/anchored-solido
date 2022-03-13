@@ -126,37 +126,37 @@ impl ExchangeRate {
     pub fn exchange_sol(&self, amount: Lamports) -> token::Result<StLamports> {
         // The exchange rate starts out at 1:1, if there are no deposits yet.
         // If we minted stSOL but there is no SOL, then also assume a 1:1 rate.
-        if self.st_sol_supply == StLamports(0) || self.sol_balance == Lamports(0) {
-            return Ok(StLamports(amount.0));
+        if self.st_sol_supply == StLamports::new(0) || self.sol_balance == Lamports::new(0) {
+            return Ok(StLamports::new(amount.amount));
         }
 
         let rate = Rational {
-            numerator: self.st_sol_supply.0,
-            denominator: self.sol_balance.0,
+            numerator: self.st_sol_supply.amount,
+            denominator: self.sol_balance.amount,
         };
 
         // The result is in Lamports, because the type system considers Rational
         // dimensionless, but in this case `rate` has dimensions stSOL/SOL, so
         // we need to re-wrap the result in the right type.
-        (amount * rate).map(|x| StLamports(x.0))
+        (amount * rate).map(|x| StLamports::new(x.amount))
     }
 
     /// Convert stSOL to SOL.
     pub fn exchange_st_sol(&self, amount: StLamports) -> std::result::Result<Lamports, LidoError> {
         // If there is no stSOL in existence, it cannot be exchanged.
-        if self.st_sol_supply == StLamports(0) {
+        if self.st_sol_supply == StLamports::new(0) {
             return Err(LidoError::InvalidAmount);
         }
 
         let rate = Rational {
-            numerator: self.sol_balance.0,
-            denominator: self.st_sol_supply.0,
+            numerator: self.sol_balance.amount,
+            denominator: self.st_sol_supply.amount,
         };
 
         // The result is in StLamports, because the type system considers Rational
         // dimensionless, but in this case `rate` has dimensions SOL/stSOL, so
         // we need to re-wrap the result in the right type.
-        Ok((amount * rate).map(|x| Lamports(x.0))?)
+        Ok((amount * rate).map(|x| Lamports::new(x.amount))?)
     }
 }
 
@@ -292,11 +292,11 @@ impl Default for Validator {
     fn default() -> Self {
         Validator {
             fee_address: Pubkey::default(),
-            fee_credit: StLamports(0),
+            fee_credit: StLamports::new(0),
             stake_seeds: SeedRange { begin: 0, end: 0 },
             unstake_seeds: SeedRange { begin: 0, end: 0 },
-            stake_accounts_balance: Lamports(0),
-            unstake_accounts_balance: Lamports(0),
+            stake_accounts_balance: Lamports::new(0),
+            unstake_accounts_balance: Lamports::new(0),
             active: true,
         }
     }
@@ -380,7 +380,7 @@ impl RewardDistribution {
 
         // Sanity check: We should not produce more fees than we had to split in
         // the first place.
-        let total_fees = Lamports(0)
+        let total_fees = Lamports::new(0)
             .add(treasury_amount)?
             .add(developer_amount)?
             .add((reward_per_validator * num_validators)?)?;
@@ -450,21 +450,27 @@ mod test_lido {
     fn test_exchange_when_balance_and_supply_are_zero() {
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(0),
-            st_sol_supply: StLamports(0),
+            sol_balance: Lamports::new(0),
+            st_sol_supply: StLamports::new(0),
         };
-        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+        assert_eq!(
+            rate.exchange_sol(Lamports::new(123)),
+            Ok(StLamports::new(123))
+        );
     }
 
     #[test]
     fn test_exchange_when_rate_is_one_to_two() {
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(2),
-            st_sol_supply: StLamports(1),
+            sol_balance: Lamports::new(2),
+            st_sol_supply: StLamports::new(1),
         };
         // If every stSOL is worth 1 SOL, I should get half my SOL amount in stSOL.
-        assert_eq!(rate.exchange_sol(Lamports(44)), Ok(StLamports(22)));
+        assert_eq!(
+            rate.exchange_sol(Lamports::new(44)),
+            Ok(StLamports::new(22))
+        );
     }
 
     #[test]
@@ -477,18 +483,24 @@ mod test_lido {
         // stSOL:SOL rate, and we choose it to be 1:1.
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(100),
-            st_sol_supply: StLamports(0),
+            sol_balance: Lamports::new(100),
+            st_sol_supply: StLamports::new(0),
         };
-        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+        assert_eq!(
+            rate.exchange_sol(Lamports::new(123)),
+            Ok(StLamports::new(123))
+        );
 
         // This case should not occur in the wild, but in any case, use a 1:1 rate here too.
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(0),
-            st_sol_supply: StLamports(100),
+            sol_balance: Lamports::new(0),
+            st_sol_supply: StLamports::new(100),
         };
-        assert_eq!(rate.exchange_sol(Lamports(123)), Ok(StLamports(123)));
+        assert_eq!(
+            rate.exchange_sol(Lamports::new(123)),
+            Ok(StLamports::new(123))
+        );
     }
 
     #[test]
@@ -504,10 +516,10 @@ mod test_lido {
         // a general roundtripping test.
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(100),
-            st_sol_supply: StLamports(50),
+            sol_balance: Lamports::new(100),
+            st_sol_supply: StLamports::new(50),
         };
-        let sol_1 = Lamports(10);
+        let sol_1 = Lamports::new(10);
         let st_sol = rate.exchange_sol(sol_1).unwrap();
         let sol_2 = rate.exchange_st_sol(st_sol).unwrap();
         assert_eq!(sol_2, sol_1);
@@ -516,13 +528,13 @@ mod test_lido {
         // `amount * st_sol_supply` is not a multiple of `sol_balance`.
         let rate = ExchangeRate {
             computed_in_epoch: 0,
-            sol_balance: Lamports(110_000),
-            st_sol_supply: StLamports(100_000),
+            sol_balance: Lamports::new(110_000),
+            st_sol_supply: StLamports::new(100_000),
         };
-        let sol_1 = Lamports(1_000);
+        let sol_1 = Lamports::new(1_000);
         let st_sol = rate.exchange_sol(sol_1).unwrap();
         let sol_2 = rate.exchange_st_sol(st_sol).unwrap();
-        assert_eq!(sol_2, Lamports(999));
+        assert_eq!(sol_2, Lamports::new(999));
     }
 
     /*
@@ -569,7 +581,7 @@ mod test_lido {
 
         assert_eq!(
             lido.get_sol_balance(&rent, &reserve_account),
-            Ok(Lamports(0))
+            Ok(Lamports::new(0))
         );
 
         let mut new_amount = rent.minimum_balance(0) + 10;
@@ -678,24 +690,24 @@ mod test_lido {
         assert_eq!(
             // In this case the amount can be split exactly,
             // there is no remainder.
-            spec.split_reward(Lamports(600), 1).unwrap(),
+            spec.split_reward(Lamports::new(600), 1).unwrap(),
             Fees {
-                treasury_amount: Lamports(300),
-                reward_per_validator: Lamports(200),
-                developer_amount: Lamports(100),
-                st_sol_appreciation_amount: Lamports(0),
+                treasury_amount: Lamports::new(300),
+                reward_per_validator: Lamports::new(200),
+                developer_amount: Lamports::new(100),
+                st_sol_appreciation_amount: Lamports::new(0),
             },
         );
 
         assert_eq!(
             // In this case the amount cannot be split exactly, all fees are
             // rounded down.
-            spec.split_reward(Lamports(1_000), 4).unwrap(),
+            spec.split_reward(Lamports::new(1_000), 4).unwrap(),
             Fees {
-                treasury_amount: Lamports(500),
-                reward_per_validator: Lamports(83),
-                developer_amount: Lamports(166),
-                st_sol_appreciation_amount: Lamports(2),
+                treasury_amount: Lamports::new(500),
+                reward_per_validator: Lamports::new(83),
+                developer_amount: Lamports::new(166),
+                st_sol_appreciation_amount: Lamports::new(2),
             },
         );
 
@@ -703,12 +715,12 @@ mod test_lido {
         // we should see 3%, 2%, and 1% fee.
         spec.st_sol_appreciation = 94;
         assert_eq!(
-            spec.split_reward(Lamports(100), 1).unwrap(),
+            spec.split_reward(Lamports::new(100), 1).unwrap(),
             Fees {
-                treasury_amount: Lamports(3),
-                reward_per_validator: Lamports(2),
-                developer_amount: Lamports(1),
-                st_sol_appreciation_amount: Lamports(94),
+                treasury_amount: Lamports::new(3),
+                reward_per_validator: Lamports::new(2),
+                developer_amount: Lamports::new(1),
+                st_sol_appreciation_amount: Lamports::new(94),
             },
         );
 
@@ -719,12 +731,12 @@ mod test_lido {
             st_sol_appreciation: 0,
         };
         assert_eq!(
-            spec_coprime.split_reward(Lamports(1_000), 1).unwrap(),
+            spec_coprime.split_reward(Lamports::new(1_000), 1).unwrap(),
             Fees {
-                treasury_amount: Lamports(288),
-                reward_per_validator: Lamports(389),
-                developer_amount: Lamports(322),
-                st_sol_appreciation_amount: Lamports(1),
+                treasury_amount: Lamports::new(288),
+                reward_per_validator: Lamports::new(389),
+                developer_amount: Lamports::new(322),
+                st_sol_appreciation_amount: Lamports::new(1),
             },
         );
     }
