@@ -3,23 +3,21 @@
 
 //! State transition types
 
-
-use std::ops::Range;
-use anchor_lang::prelude::*;
-use solana_program::clock::Epoch;
 use crate::account_map::{AccountMap, AccountSet, EntryConstantSize, PubkeyAndEntry};
 use crate::error::LidoError;
 use crate::metrics::Metrics;
 use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
+use anchor_lang::prelude::*;
+use solana_program::clock::Epoch;
+use std::ops::Range;
 
 pub const LIDO_VERSION: u8 = 0;
 
 /// Size of a serialized `Lido` struct excluding validators and maintainers.
-pub const LIDO_CONSTANT_SIZE: usize = 357 + 8;
+pub const LIDO_CONSTANT_SIZE: usize = 357;
 
 pub const VALIDATOR_CONSTANT_SIZE: usize = 89;
-
 
 pub type Validators = AccountMap<Validator>;
 
@@ -109,9 +107,7 @@ impl EntryConstantSize for () {
 ///    of epoch `i`. Everybody who deposited in epoch `i` (users, as well as fee
 ///    recipients) now benefit from the validation rewards received in epoch `i`.
 /// 5. Etc.
-#[derive(
-Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq,
-)]
+#[derive(Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq)]
 pub struct ExchangeRate {
     /// The epoch in which we last called `UpdateExchangeRate`.
     pub computed_in_epoch: Epoch,
@@ -165,9 +161,7 @@ impl ExchangeRate {
 }
 
 #[account]
-#[derive(
-Debug, Default, Eq, PartialEq,
-)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Lido {
     /// Version number for the Lido
     pub lido_version: u8,
@@ -212,7 +206,6 @@ pub struct Lido {
     pub maintainers: Maintainers,
 }
 
-
 // impl Lido
 
 #[derive(Clone, Debug, Eq, PartialEq, AnchorDeserialize, AnchorSerialize)]
@@ -239,9 +232,7 @@ pub struct Validator {
     pub active: bool,
 }
 
-#[derive(
-Clone, Debug, Default, Eq, PartialEq, AnchorDeserialize, AnchorSerialize,
-)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, AnchorDeserialize, AnchorSerialize)]
 pub struct SeedRange {
     /// Start (inclusive) of the seed range for stake accounts.
     ///
@@ -318,9 +309,7 @@ impl Default for Validator {
 /// Determines how rewards are split up among these parties, represented as the
 /// number of parts of the total. For example, if each party has 1 part, then
 /// they all get an equal share of the reward.
-#[derive(
-Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize,
-)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
 pub struct RewardDistribution {
     pub treasury_fee: u32,
     pub validation_fee: u32,
@@ -329,9 +318,7 @@ pub struct RewardDistribution {
 }
 
 /// Specifies the fee recipients, accounts that should be created by Lido's minter
-#[derive(
-Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize,
-)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
 pub struct FeeRecipients {
     pub treasury_account: Pubkey,
     pub developer_account: Pubkey,
@@ -429,14 +416,10 @@ pub struct Fees {
     pub st_sol_appreciation_amount: Lamports,
 }
 
-#[account]
-#[derive(Default)]
-pub struct Reserve {}
-
 #[cfg(test)]
 mod test_lido {
-    use super::*;
     use super::Fees;
+    use super::*;
 
     #[test]
     fn test_account_map_required_bytes_relates_to_maximum_entries() {
@@ -745,5 +728,4 @@ mod test_lido {
             },
         );
     }
-
 }

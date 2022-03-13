@@ -1,13 +1,10 @@
+use crate::token::ArithmeticError;
 use anchor_lang::prelude::*;
 use num_derive::FromPrimitive;
-use crate::token::ArithmeticError;
 
 #[error_code]
 #[derive(Eq, FromPrimitive, PartialEq)]
 pub enum LidoError {
-    /// Address is already initialized
-    AlreadyInUse,
-
     /// Lido account mismatch the one stored in the Lido program
     InvalidOwner,
 
@@ -86,10 +83,6 @@ pub enum LidoError {
     /// A member of the accounts list (maintainers or validators) is not present
     /// in the structure
     InvalidAccountMember,
-
-    /// Lido has an invalid size, calculated with the Lido's constant size plus
-    /// required to hold variable structures
-    InvalidLidoSize,
 
     /// The instance has no validators.
     NoActiveValidators,

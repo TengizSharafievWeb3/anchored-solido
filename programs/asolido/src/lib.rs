@@ -1,19 +1,20 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{TokenAccount, Token, Mint};
-use crate::state::{Lido, Reserve};
+use crate::error::LidoError;
+use crate::state::Lido;
+use crate::state::{RewardDistribution, LIDO_VERSION};
 use crate::token::{Lamports, StLamports};
-use crate::state::{LIDO_VERSION, RewardDistribution};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use solana_program::program_option::COption;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
-pub mod initialize;
-pub mod state;
-pub mod logic;
-pub mod error;
 mod account_map;
-mod token;
+pub mod error;
+pub mod initialize;
+pub mod logic;
 mod metrics;
-
+pub mod state;
+mod token;
 
 #[program]
 pub mod asolido {
@@ -26,7 +27,13 @@ pub mod asolido {
         max_validators: u32,
         max_maintainers: u32,
     ) -> Result<()> {
-        ctx.accounts.process(LIDO_VERSION, reward_distribution, max_validators, max_maintainers)
+        ctx.accounts.process(
+            &ctx.bumps,
+            LIDO_VERSION,
+            reward_distribution,
+            max_validators,
+            max_maintainers,
+        )
     }
 
     /// Deposit a given amount of SOL.
@@ -121,38 +128,62 @@ pub mod asolido {
 // ----------------------------------------------------------------------------
 
 /// Seed for reserve account that holds SOL.
-pub const RESERVE_ACCOUNT: &[u8] = b"reserve_account";
+pub const RESERVE_ACCOUNT: [u8; 15] = *b"reserve_account";
 
 /// Mint authority, mints StSol.
-pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
+pub const MINT_AUTHORITY: [u8; 14] = *b"mint_authority";
 
 /// Seed for managing the stake.
-pub const STAKE_AUTHORITY: &[u8] = b"stake_authority";
+pub const STAKE_AUTHORITY: [u8; 15] = *b"stake_authority";
 
 /// Additional seed for active/activating validator stake accounts.
-pub const VALIDATOR_STAKE_ACCOUNT: &[u8] = b"validator_stake_account";
+pub const VALIDATOR_STAKE_ACCOUNT: [u8; 23] = *b"validator_stake_account";
 /// Additional seed for inactive/deactivating validator stake accounts.
-pub const VALIDATOR_UNSTAKE_ACCOUNT: &[u8] = b"validator_unstake_account";
+pub const VALIDATOR_UNSTAKE_ACCOUNT: [u8; 25] = *b"validator_unstake_account";
 
 /// Authority responsible for withdrawing the stake rewards.
-pub const REWARDS_WITHDRAW_AUTHORITY: &[u8] = b"rewards_withdraw_authority";
+pub const REWARDS_WITHDRAW_AUTHORITY: [u8; 26] = *b"rewards_withdraw_authority";
 
 // ----------------------------------------------------------------------------
 
 #[derive(Accounts)]
+#[instruction(max_validators: u32, max_maintainers: u32)]
 pub struct Initialize<'info> {
-    #[account(init, payer = payer)]
-    pub lido: Account<'info, Lido>,
+    #[account(init, payer = payer, space = Initialize::required_bytes(max_validators, max_maintainers))]
+    pub lido: Box<Account<'info, Lido>>,
 
+    /// CHECK: This is not dangerous because we don't read or write from this account
     pub manager: UncheckedAccount<'info>,
-    #[account(rent_exempt = enforce)]
+
+    /// Check if the mint program coin supply is zero and the mint authority is set
+    /// to `mint_authority`.
+    #[account(
+        rent_exempt = enforce,
+        constraint = st_sol_mint.supply == 0 @ LidoError::InvalidMint,
+        constraint = st_sol_mint.mint_authority == COption::Some(mint_authority.key()) @ LidoError::InvalidMint,
+    )]
     pub st_sol_mint: Account<'info, Mint>,
-    #[account(constraint = treasury_account.mint == st_sol_mint.key() @ error::LidoError::InvalidFeeRecipient)]
-    pub treasury_account: Account<'info, TokenAccount>,
-    #[account(constraint = developer_account.mint == st_sol_mint.key() @ error::LidoError::InvalidFeeRecipient)]
-    pub developer_account: Account<'info, TokenAccount>,
-    #[account(rent_exempt = enforce, seeds = [RESERVE_ACCOUNT.as_ref()], bump)]
-    pub reserve_account: UncheckedAccount<'info>,
+
+    #[account(constraint = treasury.mint == st_sol_mint.key() @ LidoError::InvalidFeeRecipient)]
+    pub treasury: Account<'info, TokenAccount>,
+    #[account(constraint = developer.mint == st_sol_mint.key() @ LidoError::InvalidFeeRecipient)]
+    pub developer: Account<'info, TokenAccount>,
+
+    #[account(rent_exempt = enforce, seeds = [lido.key().as_ref(), RESERVE_ACCOUNT.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc and rent_exempt check
+    pub reserve: UncheckedAccount<'info>,
+
+    #[account(seeds = [lido.key().as_ref(), MINT_AUTHORITY.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc
+    pub mint_authority: UncheckedAccount<'info>,
+
+    #[account(seeds = [lido.key().as_ref(), STAKE_AUTHORITY.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc
+    pub stake_authority: UncheckedAccount<'info>,
+
+    #[account(seeds = [lido.key().as_ref(), REWARDS_WITHDRAW_AUTHORITY.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc
+    pub rewards_withdraw_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

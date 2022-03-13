@@ -9,12 +9,10 @@
 //! anything useful from there is even harder. So what we do instead is embed
 //! counters in the on-chain state for the metrics that we are interested in.
 
-use anchor_lang::prelude::*;
 use crate::token::{self, Lamports, StLamports};
+use anchor_lang::prelude::*;
 
-#[derive(
-    Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq,
-)]
+#[derive(Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq)]
 pub struct Metrics {
     /// Fees paid to the treasury, in total since we started tracking, before conversion to stSOL.
     ///
@@ -139,9 +137,7 @@ impl Metrics {
 /// more on the fee than the amount to move. The largest bucket is 1e6 SOL,
 /// as the largest validators currently have around 10x that amount of SOL
 /// staked, so we are unlikely to see that much deposited in a single transaction.
-#[derive(
-    Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq,
-)]
+#[derive(Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq)]
 pub struct LamportsHistogram {
     /// Histogram buckets.
     ///
@@ -199,9 +195,7 @@ impl LamportsHistogram {
 
 /// Track how many times the withdraw function was called, as well as the number
 /// of StSOL and SOL that was withdrawn.
-#[derive(
-    Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq,
-)]
+#[derive(Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, Eq, PartialEq)]
 pub struct WithdrawMetric {
     /// Total amount of StSOL withdrawn.
     pub total_st_sol_amount: StLamports,

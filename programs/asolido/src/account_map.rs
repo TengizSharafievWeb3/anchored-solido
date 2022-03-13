@@ -9,18 +9,14 @@ use solana_program::pubkey::Pubkey;
 use crate::error::LidoError;
 
 /// An entry in `AccountMap`.
-#[derive(
-    Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize,
-)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
 pub struct PubkeyAndEntry<T> {
     pub pubkey: Pubkey,
     pub entry: T,
 }
 
 /// A map from public key to `T`, implemented as a vector of key-value pairs.
-#[derive(
-    Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize,
-)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, AnchorSerialize, AnchorDeserialize)]
 pub struct AccountMap<T> {
     pub entries: Vec<PubkeyAndEntry<T>>,
     pub maximum_entries: u32,
@@ -34,10 +30,13 @@ pub type AccountSet = AccountMap<()>;
 impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
     /// Creates a new instance with the `maximum_entries` positions filled with the default value
     pub fn new_fill_default(maximum_entries: u32) -> Self {
-        let entries = vec![PubkeyAndEntry{
-            pubkey: Pubkey::default(),
-            entry: T::default(),
-        }; maximum_entries as usize];
+        let entries = vec![
+            PubkeyAndEntry {
+                pubkey: Pubkey::default(),
+                entry: T::default(),
+            };
+            maximum_entries as usize
+        ];
         AccountMap {
             entries,
             maximum_entries,
@@ -91,7 +90,10 @@ impl<T: Clone + Default + EntryConstantSize> AccountMap<T> {
             .ok_or(LidoError::InvalidAccountMember)
     }
 
-    pub fn get_mut(&mut self, address: &Pubkey) -> std::result::Result<&mut PubkeyAndEntry<T>, LidoError> {
+    pub fn get_mut(
+        &mut self,
+        address: &Pubkey,
+    ) -> std::result::Result<&mut PubkeyAndEntry<T>, LidoError> {
         self.entries
             .iter_mut()
             .find(|pe| &pe.pubkey == address)
