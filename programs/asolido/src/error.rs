@@ -165,3 +165,9 @@ impl From<ArithmeticError> for LidoError {
         LidoError::CalculationFailure
     }
 }
+
+impl From<ArithmeticError> for anchor_lang::error::Error {
+    fn from(_: ArithmeticError) -> Self {
+        error!(LidoError::CalculationFailure)
+    }
+}

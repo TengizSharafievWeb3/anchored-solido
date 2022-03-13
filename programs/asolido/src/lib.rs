@@ -13,6 +13,7 @@ pub mod logic;
 pub mod error;
 mod account_map;
 mod token;
+mod metrics;
 
 
 #[program]

@@ -9,6 +9,7 @@ use anchor_lang::prelude::*;
 use solana_program::clock::Epoch;
 use crate::account_map::{AccountMap, AccountSet, EntryConstantSize, PubkeyAndEntry};
 use crate::error::LidoError;
+use crate::metrics::Metrics;
 use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
 
