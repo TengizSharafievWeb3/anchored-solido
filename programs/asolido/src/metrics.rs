@@ -153,7 +153,7 @@ impl LamportsHistogram {
     #[rustfmt::skip]
     pub const BUCKET_UPPER_BOUNDS: [Lamports; 12] = [
         Lamports { amount:              100_000},   // 0.000_1 SOL
-        Lamports { amount:             1_000_00},     // 0.001 SOL
+        Lamports { amount:            1_000_000},     // 0.001 SOL
         Lamports { amount:           10_000_000},      // 0.01 SOL
         Lamports { amount:          100_000_000},       // 0.1 SOL
         Lamports { amount:        1_000_000_000},         // 1 SOL
