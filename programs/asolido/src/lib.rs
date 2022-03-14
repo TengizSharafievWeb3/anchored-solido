@@ -2,6 +2,7 @@ use crate::error::LidoError;
 use crate::state::Lido;
 use crate::state::{RewardDistribution, LIDO_VERSION};
 use crate::token::{Lamports, StLamports};
+use crate::vote_state::PartialVoteState;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use solana_program::program_option::COption;
@@ -13,9 +14,11 @@ pub mod initialize;
 pub mod logic;
 pub mod maintainers;
 pub mod metrics;
+pub mod process_validator;
 pub mod state;
 pub mod token;
 pub mod validators;
+pub mod vote_state;
 
 #[program]
 pub mod asolido {
@@ -41,7 +44,7 @@ pub mod asolido {
     ///
     /// This can be called by anybody.
     #[allow(unused_variables)]
-    pub fn deposit(ctx: Context<Deposit>, amount: Lamports) -> Result<()> {
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         todo!()
     }
 
@@ -99,9 +102,8 @@ pub mod asolido {
     }
 
     /// Add a new validator to the validator set.
-    #[allow(unused_variables)]
     pub fn add_validator(ctx: Context<AddValidator>) -> Result<()> {
-        todo!()
+        ctx.accounts.process()
     }
 
     /// Set the `active` flag to false for a given validator.
@@ -237,7 +239,27 @@ pub struct ClaimValidatorFee {}
 pub struct ChangeRewardDistribution {}
 
 #[derive(Accounts)]
-pub struct AddValidator {}
+pub struct AddValidator<'info> {
+    #[account(mut, has_one = manager @ LidoError::InvalidManager)]
+    pub lido: Box<Account<'info, Lido>>,
+
+    pub manager: Signer<'info>,
+
+    #[account(
+        rent_exempt = enforce,
+        constraint = validator_vote.version == 1 @ LidoError::InvalidVoteAccount,
+        constraint = validator_vote.authorized_withdrawer == rewards_withdraw_authority.key() @ LidoError::InvalidVoteAccount,
+        constraint = validator_vote.commission == 100 @ LidoError::InvalidVoteAccount,
+    )]
+    pub validator_vote: Account<'info, PartialVoteState>,
+
+    #[account(constraint = validator_fee_st_sol.mint == lido.st_sol_mint @ LidoError::InvalidFeeRecipient)]
+    pub validator_fee_st_sol: Account<'info, TokenAccount>,
+
+    #[account(seeds = [lido.key().as_ref(), REWARDS_WITHDRAW_AUTHORITY.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc
+    pub rewards_withdraw_authority: UncheckedAccount<'info>,
+}
 
 #[derive(Accounts)]
 pub struct DeactivateValidator {}
