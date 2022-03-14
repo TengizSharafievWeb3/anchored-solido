@@ -50,7 +50,7 @@ describe("Initialize anchored-solido", () => {
         .preInstructions([await spl_token.account.token.createInstruction(treasury)])
         .rpc();
 
-    // Create treasury
+    // Create developer
     await spl_token.methods.initializeAccount()
         .accounts({
           account: developer.publicKey,
@@ -88,11 +88,150 @@ describe("Initialize anchored-solido", () => {
         .rpc();
   });
 
-  // Positive
-  // Negative
-  // - Неправильный mint
-  //   - Неправильный supply
-  //   - Неправильный mint auth
-  // - Неправильный treasury
-  // - Неправильный develop
+  it("Should NOT initialize with incorrect mint", async () => {
+      const lido1 = anchor.web3.Keypair.generate();
+      const st_sol_mint1 = anchor.web3.Keypair.generate();
+      const treasury1 = anchor.web3.Keypair.generate();
+      const developer1 = anchor.web3.Keypair.generate();
+
+      // Create mint with incorrect mint authority
+      await spl_token.methods
+          .initializeMint(0, provider.wallet.publicKey, null)
+          .accounts({
+              mint: st_sol_mint1.publicKey,
+              rent,
+          })
+          .signers([st_sol_mint1])
+          .preInstructions([await spl_token.account.mint.createInstruction(st_sol_mint1)])
+          .rpc();
+
+      // Create treasury
+      await spl_token.methods.initializeAccount()
+          .accounts({
+              account: treasury1.publicKey,
+              mint: st_sol_mint1.publicKey,
+              authority: provider.wallet.publicKey,
+              rent,
+          })
+          .signers([treasury1])
+          .preInstructions([await spl_token.account.token.createInstruction(treasury1)])
+          .rpc();
+
+      // Create developer
+      await spl_token.methods.initializeAccount()
+          .accounts({
+              account: developer1.publicKey,
+              mint: st_sol_mint1.publicKey,
+              authority: provider.wallet.publicKey,
+              rent,
+          })
+          .signers([developer1])
+          .preInstructions([await spl_token.account.token.createInstruction(developer1)])
+          .rpc();
+
+      await expect(program.methods
+          .initialize({treasuryFee: 5, validationFee: 3, developerFee: 2, stSolAppreciation: 90}, 10000, 1000)
+          .accounts({
+              lido: lido1.publicKey,
+              manager: manager.publicKey,
+              stSolMint: st_sol_mint1.publicKey,
+              treasury: treasury1.publicKey,
+              developer: developer1.publicKey,
+          })
+          .signers([lido1])
+          .rpc()).to.be.rejectedWith(/InvalidMint/);
+  });
+
+    it("Should NOT initialize with incorrect treasury", async () => {
+        const lido1 = anchor.web3.Keypair.generate();
+        const st_sol_mint1 = anchor.web3.Keypair.generate();
+        const treasury1 = anchor.web3.Keypair.generate();
+        const developer1 = anchor.web3.Keypair.generate();
+
+        const [mint_authority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+            [lido1.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("mint_authority"))], program.programId);
+
+        // Create mint
+        await spl_token.methods
+            .initializeMint(0, mint_authority, null)
+            .accounts({
+                mint: st_sol_mint1.publicKey,
+                rent,
+            })
+            .signers([st_sol_mint1])
+            .preInstructions([await spl_token.account.mint.createInstruction(st_sol_mint1)])
+            .rpc();
+
+        await expect(program.methods
+            .initialize({treasuryFee: 5, validationFee: 3, developerFee: 2, stSolAppreciation: 90}, 10000, 1000)
+            .accounts({
+                lido: lido1.publicKey,
+                manager: manager.publicKey,
+                stSolMint: st_sol_mint1.publicKey,
+                treasury: treasury.publicKey,
+                developer: developer.publicKey,
+            })
+            .signers([lido1])
+            .rpc()).to.be.rejectedWith(/InvalidFeeRecipient/);
+    });
+
+    it("Should NOT initialize with not funded reserve account", async() => {
+        const lido1 = anchor.web3.Keypair.generate();
+        const st_sol_mint1 = anchor.web3.Keypair.generate();
+        const treasury1 = anchor.web3.Keypair.generate();
+        const developer1 = anchor.web3.Keypair.generate();
+
+        const [mint_authority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+            [lido1.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("mint_authority"))], program.programId);
+
+        // Create mint
+        await spl_token.methods
+            .initializeMint(0, mint_authority, null)
+            .accounts({
+                mint: st_sol_mint1.publicKey,
+                rent,
+            })
+            .signers([st_sol_mint1])
+            .preInstructions([await spl_token.account.mint.createInstruction(st_sol_mint1)])
+            .rpc();
+
+        // Create treasury
+        await spl_token.methods.initializeAccount()
+            .accounts({
+                account: treasury1.publicKey,
+                mint: st_sol_mint1.publicKey,
+                authority: provider.wallet.publicKey,
+                rent,
+            })
+            .signers([treasury1])
+            .preInstructions([await spl_token.account.token.createInstruction(treasury1)])
+            .rpc();
+
+        // Create developer
+        await spl_token.methods.initializeAccount()
+            .accounts({
+                account: developer1.publicKey,
+                mint: st_sol_mint1.publicKey,
+                authority: provider.wallet.publicKey,
+                rent,
+            })
+            .signers([developer1])
+            .preInstructions([await spl_token.account.token.createInstruction(developer1)])
+            .rpc();
+
+        const max_validators = 10000;
+        const max_maintainers = 1000;
+
+        await expect(program.methods
+            .initialize({treasuryFee: 5, validationFee: 3, developerFee: 2, stSolAppreciation: 90}, max_validators, max_maintainers)
+            .accounts({
+                lido: lido1.publicKey,
+                manager: manager.publicKey,
+                stSolMint: st_sol_mint1.publicKey,
+                treasury: treasury1.publicKey,
+                developer: developer1.publicKey,
+            })
+            .signers([lido1])
+            .rpc()).to.be.rejected;
+    });
 });
