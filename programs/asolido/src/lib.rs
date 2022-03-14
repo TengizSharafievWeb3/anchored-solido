@@ -3,7 +3,7 @@ use crate::state::Lido;
 use crate::state::{RewardDistribution, LIDO_VERSION};
 use crate::token::{Lamports, StLamports};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{Mint, TokenAccount};
 use solana_program::program_option::COption;
 
 declare_id!("BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M");
@@ -40,48 +40,57 @@ pub mod asolido {
     /// Deposit a given amount of SOL.
     ///
     /// This can be called by anybody.
+    #[allow(unused_variables)]
     pub fn deposit(ctx: Context<Deposit>, amount: Lamports) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Withdraw a given amount of stSOL.
     ///
     /// Caller provides some `amount` of StLamports that are to be burned in
     /// order to withdraw SOL.
+    #[allow(unused_variables)]
     pub fn withdraw(ctx: Context<Withdraw>, amount: StLamports) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Move deposits from the reserve into a stake account and delegate it to a member validator.
+    #[allow(unused_variables)]
     pub fn stake_deposit(ctx: Context<StakeDeposit>, amount: Lamports) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Unstake from a validator to a new stake account.
+    #[allow(unused_variables)]
     pub fn unstake(ctx: Context<Unstake>, amount: Lamports) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Update the exchange rate, at the beginning of the epoch.
+    #[allow(unused_variables)]
     pub fn update_exchange_rate(ctx: Context<UpdateExchangeRate>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Observe any external changes in the balances of a validator's stake accounts.
     ///
     /// If there is inactive balance in stake accounts, withdraw this back to the reserve.
+    #[allow(unused_variables)]
     pub fn withdraw_inactive_stake(ctx: Context<WithdrawInactiveStake>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn collect_validator_fee(ctx: Context<CollectValidatorFee>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn claim_validator_fee(ctx: Context<ClaimValidatorFee>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn change_reward_distribution(
         ctx: Context<ChangeRewardDistribution>,
         new_reward_distribution: RewardDistribution,
@@ -90,8 +99,9 @@ pub mod asolido {
     }
 
     /// Add a new validator to the validator set.
+    #[allow(unused_variables)]
     pub fn add_validator(ctx: Context<AddValidator>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     /// Set the `active` flag to false for a given validator.
@@ -105,24 +115,29 @@ pub mod asolido {
     ///
     /// Once there are no more delegations to this validator, and it has no
     /// unclaimed fee credits, then the validator can be removed.
+    #[allow(unused_variables)]
     pub fn deactivate_validator(ctx: Context<DeactivateValidator>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn remove_validator(ctx: Context<RemoveValidator>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn add_maintainer(ctx: Context<AddMaintainer>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn remove_maintainer(ctx: Context<RemoveMaintainer>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn merge_stake(ctx: Context<MergeStake>) -> Result<()> {
-        Ok(())
+        todo!()
     }
 }
 
