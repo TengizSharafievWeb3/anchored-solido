@@ -1,7 +1,7 @@
 [features]
 seeds = true
 [programs.localnet]
-anchored_solido = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+anchored_solido = "BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M"
 
 [registry]
 url = "https://anchor.projectserum.com"

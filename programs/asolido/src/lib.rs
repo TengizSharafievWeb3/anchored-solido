@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use solana_program::program_option::COption;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M");
 
 pub mod error;
 pub mod initialize;
@@ -190,7 +190,6 @@ pub struct Initialize<'info> {
     pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
 }
 
 // ----------------------------------------------------------------------------
