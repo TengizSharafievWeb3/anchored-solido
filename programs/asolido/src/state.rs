@@ -4,13 +4,13 @@
 //! State transition types
 
 use crate::error::LidoError;
+use crate::maintainers::Maintainers;
 use crate::metrics::Metrics;
 use crate::token;
 use crate::token::{Lamports, Rational, StLamports};
+use crate::validators::{PubkeyAndEntry, Validators};
 use anchor_lang::prelude::*;
 use std::ops::Range;
-use crate::validators::{Validators, PubkeyAndEntry};
-use crate::maintainers::Maintainers;
 
 pub const LIDO_VERSION: u8 = 0;
 

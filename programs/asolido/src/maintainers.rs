@@ -19,7 +19,7 @@ impl Maintainers {
     /// Creates a new instance with the `maximum_entries` positions filled with the default value
     pub fn new_fill_default(maximum_entries: u32) -> Self {
         Maintainers {
-            entries : vec![Pubkey::default(); maximum_entries as usize],
+            entries: vec![Pubkey::default(); maximum_entries as usize],
             maximum_entries,
         }
     }
@@ -69,10 +69,7 @@ impl Maintainers {
             .ok_or(LidoError::InvalidAccountMember)
     }
 
-    pub fn get_mut(
-        &mut self,
-        address: &Pubkey,
-    ) -> std::result::Result<&mut Pubkey, LidoError> {
+    pub fn get_mut(&mut self, address: &Pubkey) -> std::result::Result<&mut Pubkey, LidoError> {
         self.entries
             .iter_mut()
             .find(|pe| *pe == address)

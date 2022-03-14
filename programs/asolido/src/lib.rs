@@ -11,11 +11,11 @@ declare_id!("BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M");
 pub mod error;
 pub mod initialize;
 pub mod logic;
+pub mod maintainers;
 pub mod metrics;
 pub mod state;
 pub mod token;
 pub mod validators;
-pub mod maintainers;
 
 #[program]
 pub mod asolido {
