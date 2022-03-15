@@ -74,12 +74,12 @@ impl Validators {
         Ok(())
     }
 
-    pub fn remove(&mut self, address: &Pubkey) -> std::result::Result<Validator, LidoError> {
+    pub fn remove(&mut self, address: &Pubkey) -> Result<Validator> {
         let idx = self
             .entries
             .iter()
             .position(|pe| &pe.pubkey == address)
-            .ok_or(LidoError::InvalidAccountMember)?;
+            .ok_or_else(|| error!(LidoError::InvalidAccountMember))?;
         Ok(self.entries.swap_remove(idx).entry)
     }
 

@@ -14,7 +14,7 @@ pub mod initialize;
 pub mod logic;
 pub mod maintainers;
 pub mod metrics;
-pub mod process_validator;
+pub mod process_managment;
 pub mod state;
 pub mod token;
 pub mod validators;
@@ -122,9 +122,8 @@ pub mod asolido {
         todo!()
     }
 
-    #[allow(unused_variables)]
     pub fn remove_validator(ctx: Context<RemoveValidator>) -> Result<()> {
-        todo!()
+        ctx.accounts.process()
     }
 
     #[allow(unused_variables)]
@@ -265,7 +264,12 @@ pub struct AddValidator<'info> {
 pub struct DeactivateValidator {}
 
 #[derive(Accounts)]
-pub struct RemoveValidator {}
+pub struct RemoveValidator<'info> {
+    #[account(mut)]
+    pub lido: Box<Account<'info, Lido>>,
+
+    pub validator_vote: Account<'info, PartialVoteState>,
+}
 
 #[derive(Accounts)]
 pub struct AddMaintainer {}
