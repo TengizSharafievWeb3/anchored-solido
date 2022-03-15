@@ -86,6 +86,13 @@ describe("Initialize anchored-solido", () => {
         })
         .signers([lido])
         .rpc();
+
+    const lidoAccount = await program.account.lido.fetch(lido.publicKey);
+    expect(lidoAccount.manager).to.be.deep.equal(manager.publicKey);
+    expect(lidoAccount.stSolMint).to.be.deep.equal(st_sol_mint.publicKey);
+    expect(lidoAccount.feeRecipients.treasuryAccount).to.be.deep.equal(treasury.publicKey);
+    expect(lidoAccount.feeRecipients.developerAccount).to.be.deep.equal(developer.publicKey);
+
   });
 
   it("Should NOT initialize with incorrect mint", async () => {

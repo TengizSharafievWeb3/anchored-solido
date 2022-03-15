@@ -20,6 +20,7 @@ impl<'info> Initialize<'info> {
 
         lido.lido_version = version;
         lido.manager = self.manager.key();
+        lido.st_sol_mint = self.st_sol_mint.key();
         lido.exchange_rate = ExchangeRate::default();
         lido.sol_reserve_account_bump_seed = *bumps.get("reserve").unwrap();
         lido.mint_authority_bump_seed = *bumps.get("mint_authority").unwrap();
