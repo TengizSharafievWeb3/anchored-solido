@@ -88,7 +88,7 @@ describe("Add Remove Validator", () => {
     await create_token(treasury, st_sol_mint.publicKey, provider.wallet.publicKey);
     await create_token(developer, st_sol_mint.publicKey, provider.wallet.publicKey);
     await create_token(fee, st_sol_mint.publicKey, provider.wallet.publicKey);
-    
+
     const [withrawer, _withrawer_nonce] = await PublicKey.findProgramAddress(
       [lido.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("rewards_withdraw_authority"))], program.programId);
     await create_vote(vote, node, withrawer, 100);
@@ -108,11 +108,12 @@ describe("Add Remove Validator", () => {
   });
 
   it("Should add validator", async () => {
-    program.methods.addValidator()
+    await program.methods.addValidator()
       .accounts({
         lido: lido.publicKey,
         manager: manager.publicKey,
-        validator_vote: vote.publicKey,
+        validatorVote: vote.publicKey,
+        validatorFeeStSol: fee.publicKey,
       })
       .signers([manager])
       .rpc();
@@ -124,7 +125,8 @@ describe("Add Remove Validator", () => {
       .accounts({
         lido: lido.publicKey,
         manager: manager.publicKey,
-        validator_vote: vote.publicKey,
+        validatorVote: vote.publicKey,
+        validatorFeeStSol: fee.publicKey,
       })
       .signers([manager])
       .rpc()).to.be.rejected;
@@ -140,7 +142,8 @@ describe("Add Remove Validator", () => {
       .accounts({
         lido: lido.publicKey,
         manager: manager.publicKey,
-        validator_vote: invalid_vote.publicKey,
+        validatorVote: invalid_vote.publicKey,
+        validatorFeeStSol: fee.publicKey,
       })
       .signers([manager, invalid_vote])
       .preInstructions([web3.SystemProgram.createAccount({
