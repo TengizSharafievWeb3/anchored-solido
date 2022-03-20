@@ -10,10 +10,10 @@ use solana_program::program_option::COption;
 declare_id!("BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M");
 
 pub mod error;
-pub mod initialize;
 pub mod logic;
 pub mod maintainers;
 pub mod metrics;
+pub mod process;
 pub mod process_managment;
 pub mod state;
 pub mod token;
@@ -117,9 +117,8 @@ pub mod asolido {
     ///
     /// Once there are no more delegations to this validator, and it has no
     /// unclaimed fee credits, then the validator can be removed.
-    #[allow(unused_variables)]
     pub fn deactivate_validator(ctx: Context<DeactivateValidator>) -> Result<()> {
-        todo!()
+        ctx.accounts.process()
     }
 
     pub fn remove_validator(ctx: Context<RemoveValidator>) -> Result<()> {
@@ -261,7 +260,14 @@ pub struct AddValidator<'info> {
 }
 
 #[derive(Accounts)]
-pub struct DeactivateValidator {}
+pub struct DeactivateValidator<'info> {
+    #[account(mut, has_one = manager @ LidoError::InvalidManager)]
+    pub lido: Box<Account<'info, Lido>>,
+
+    pub manager: Signer<'info>,
+
+    pub validator_vote: Account<'info, PartialVoteState>,
+}
 
 #[derive(Accounts)]
 pub struct RemoveValidator<'info> {

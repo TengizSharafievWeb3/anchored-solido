@@ -162,4 +162,35 @@ describe("Add Remove Validator", () => {
       })])
       .rpc()).to.be.rejected;
   });
+
+  // test_successful_remove_validator
+  it("Should deactivate and remove validator", async () => {
+    let lidoAccount = await program.account.lido.fetch(lido.publicKey);
+    expect(lidoAccount.validators.entries.length).to.be.equal(1);
+    const validator = lidoAccount.validators.entries[0];
+    expect(validator.pubkey).to.be.deep.equal(vote.publicKey);
+    expect(validator.entry.active).to.be.true;
+
+    await program.methods.deactivateValidator()
+      .accounts({
+        lido: lido.publicKey,
+        manager: manager.publicKey,
+        validatorVote: vote.publicKey,
+      })
+      .signers([manager])
+      .rpc();
+
+    lidoAccount = await program.account.lido.fetch(lido.publicKey);
+    expect(lidoAccount.validators.entries[0].entry.active).to.be.false;
+
+    await program.methods.removeValidator()
+      .accounts({
+        lido: lido.publicKey,
+        validatorVote: vote.publicKey,
+      })
+      .rpc();
+
+    lidoAccount = await program.account.lido.fetch(lido.publicKey);
+    expect(lidoAccount.validators.entries.length).to.be.equal(0);
+  });
 });

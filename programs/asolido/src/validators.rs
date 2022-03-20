@@ -93,11 +93,11 @@ impl Validators {
     pub fn get_mut(
         &mut self,
         address: &Pubkey,
-    ) -> std::result::Result<&mut PubkeyAndEntry, LidoError> {
+    ) -> Result<&mut PubkeyAndEntry> {
         self.entries
             .iter_mut()
             .find(|pe| &pe.pubkey == address)
-            .ok_or(LidoError::InvalidAccountMember)
+            .ok_or_else(|| error!(LidoError::InvalidAccountMember))
     }
 
     /// Return how many bytes are needed to serialize an instance holding `max_entries`.
