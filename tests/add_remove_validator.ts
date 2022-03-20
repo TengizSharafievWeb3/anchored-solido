@@ -117,6 +117,13 @@ describe("Add Remove Validator", () => {
       })
       .signers([manager])
       .rpc();
+
+    const lidoAccount = await program.account.lido.fetch(lido.publicKey);
+    expect(lidoAccount.validators.entries.length).to.be.equal(1);
+    const validator = lidoAccount.validators.entries[0];
+    expect(validator.pubkey).to.be.deep.equal(vote.publicKey);
+    expect(validator.entry.feeAddress).to.be.deep.equal(fee.publicKey);
+    expect(validator.entry.active).to.be.true;
   });
 
   // Adding the validator a second time should fail.
