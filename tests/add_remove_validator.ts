@@ -88,20 +88,7 @@ describe("Add Remove Validator", () => {
     await create_token(treasury, st_sol_mint.publicKey, provider.wallet.publicKey);
     await create_token(developer, st_sol_mint.publicKey, provider.wallet.publicKey);
     await create_token(fee, st_sol_mint.publicKey, provider.wallet.publicKey);
-
-    // derive & fund reserve
-    const [reserve, _reserve_nonce] = await PublicKey.findProgramAddress(
-      [lido.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("reserve_account"))], program.programId);
-
-    const min_balance = await provider.connection.getMinimumBalanceForRentExemption(0);
-    await provider.send(
-      new web3.Transaction()
-        .add(web3.SystemProgram.transfer({
-          fromPubkey: provider.wallet.publicKey,
-          toPubkey: reserve,
-          lamports: min_balance
-        })));
-
+    
     const [withrawer, _withrawer_nonce] = await PublicKey.findProgramAddress(
       [lido.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("rewards_withdraw_authority"))], program.programId);
     await create_vote(vote, node, withrawer, 100);

@@ -186,7 +186,7 @@ pub struct Initialize<'info> {
     #[account(constraint = developer.mint == st_sol_mint.key() @ LidoError::InvalidFeeRecipient)]
     pub developer: Account<'info, TokenAccount>,
 
-    #[account(rent_exempt = enforce, seeds = [lido.key().as_ref(), RESERVE_ACCOUNT.as_ref()], bump)]
+    #[account(init, payer = payer, space = 0, seeds = [lido.key().as_ref(), RESERVE_ACCOUNT.as_ref()], bump)]
     /// CHECK: Checked above, used only for bump calc and rent_exempt check
     pub reserve: UncheckedAccount<'info>,
 

@@ -71,8 +71,6 @@ describe("Initialize anchored-solido", () => {
     await create_token(treasury, st_sol_mint.publicKey, provider.wallet.publicKey);
     // Create developer
     await create_token(developer, st_sol_mint.publicKey, provider.wallet.publicKey);
-    // fund reserve
-    await fund_reserve(lido.publicKey);
   });
 
   it("Should initialize", async () => {
@@ -102,6 +100,13 @@ describe("Initialize anchored-solido", () => {
     expect(lidoAccount.feeRecipients.treasuryAccount).to.be.deep.equal(treasury.publicKey);
     expect(lidoAccount.feeRecipients.developerAccount).to.be.deep.equal(developer.publicKey);
 
+    const [reserve, _reserve_nonce] = await PublicKey.findProgramAddress(
+      [lido.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("reserve_account"))], program.programId);
+
+    const reserveBalance = await provider.connection.getBalance(reserve);
+    const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(0);
+
+    expect(reserveBalance).to.be.equal(rentExempt);
   });
 
   it("Should NOT initialize with incorrect mint", async () => {
@@ -153,42 +158,5 @@ describe("Initialize anchored-solido", () => {
       })
       .signers([lido1])
       .rpc()).to.be.rejectedWith(/InvalidFeeRecipient/);
-  });
-
-  it("Should NOT initialize with not funded reserve account", async () => {
-    const lido1 = Keypair.generate();
-    const st_sol_mint1 = Keypair.generate();
-    const treasury1 = Keypair.generate();
-    const developer1 = Keypair.generate();
-
-    const [mint_authority, _nonce] = await PublicKey.findProgramAddress(
-      [lido1.publicKey.toBuffer(), Buffer.from(anchor.utils.bytes.utf8.encode("mint_authority"))], program.programId);
-
-    // Create mint
-    await create_mint(st_sol_mint1, mint_authority);
-    // Create treasury
-    await create_token(treasury1, st_sol_mint1.publicKey, provider.wallet.publicKey);
-    // Create developer
-    await create_token(developer1, st_sol_mint1.publicKey, provider.wallet.publicKey);
-    
-    const max_validators = 10000;
-    const max_maintainers = 1000;
-
-    await expect(program.methods
-      .initialize({
-        treasuryFee: 5,
-        validationFee: 3,
-        developerFee: 2,
-        stSolAppreciation: 90
-      }, max_validators, max_maintainers)
-      .accounts({
-        lido: lido1.publicKey,
-        manager: manager.publicKey,
-        stSolMint: st_sol_mint1.publicKey,
-        treasury: treasury1.publicKey,
-        developer: developer1.publicKey,
-      })
-      .signers([lido1])
-      .rpc()).to.be.rejected;
   });
 });
