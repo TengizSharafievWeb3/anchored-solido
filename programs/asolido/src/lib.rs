@@ -4,7 +4,7 @@ use crate::state::{RewardDistribution, LIDO_VERSION};
 use crate::token::{Lamports, StLamports};
 use crate::vote_state::PartialVoteState;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use solana_program::program_option::COption;
 
 declare_id!("BjYuhzR84Wovp7KVtTcej6Rr5X1KsnDdG4qDXz8KZk3M");
@@ -43,9 +43,8 @@ pub mod asolido {
     /// Deposit a given amount of SOL.
     ///
     /// This can be called by anybody.
-    #[allow(unused_variables)]
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        todo!()
+        ctx.accounts.process(amount)
     }
 
     /// Withdraw a given amount of stSOL.
@@ -128,7 +127,7 @@ pub mod asolido {
     pub fn add_maintainer(ctx: Context<AddMaintainer>) -> Result<()> {
         ctx.accounts.process()
     }
-    
+
     pub fn remove_maintainer(ctx: Context<RemoveMaintainer>) -> Result<()> {
         ctx.accounts.process()
     }
@@ -208,7 +207,41 @@ pub struct Initialize<'info> {
 // ----------------------------------------------------------------------------
 
 #[derive(Accounts)]
-pub struct Deposit {}
+pub struct Deposit<'info> {
+    // Needs to be writable for us to update the metrics.
+    #[account(mut)]
+    pub lido: Box<Account<'info, Lido>>,
+
+    // Is writable due to transfer (system_instruction::transfer) from user to reserve
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    // Is writable due to mint to (spl_token::instruction::mint_to) recipient from st_sol_mint
+    #[account(mut,
+        constraint = recipient.mint == st_sol_mint.key(),
+    )]
+    pub recipient: Account<'info, TokenAccount>,
+
+    // Is writable due to mint to (spl_token::instruction::mint_to) recipient from st_sol_mint
+    #[account(mut,
+        address = lido.st_sol_mint @ LidoError::InvalidMint,
+        constraint = st_sol_mint.mint_authority == COption::Some(mint_authority.key()) @ LidoError::InvalidMint
+    )]
+    pub st_sol_mint: Account<'info, Mint>,
+
+    // Is writable due to transfer (system_instruction::transfer) from user to reserve
+    #[account(mut, seeds = [lido.key().as_ref(), RESERVE_ACCOUNT.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc and rent_exempt check
+    pub reserve: UncheckedAccount<'info>,
+
+    #[account(seeds = [lido.key().as_ref(), MINT_AUTHORITY.as_ref()], bump)]
+    /// CHECK: Checked above, used only for bump calc
+    pub mint_authority: UncheckedAccount<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+
+}
 
 #[derive(Accounts)]
 pub struct Withdraw {}

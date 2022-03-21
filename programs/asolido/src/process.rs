@@ -5,7 +5,7 @@ use crate::maintainers::Maintainers;
 use crate::metrics::Metrics;
 use crate::state::{ExchangeRate, FeeRecipients, LIDO_CONSTANT_SIZE};
 use crate::validators::Validators;
-use crate::{Initialize, RewardDistribution};
+use crate::{Deposit, Initialize, RewardDistribution};
 
 impl<'info> Initialize<'info> {
     pub fn process(
@@ -47,5 +47,11 @@ impl<'info> Initialize<'info> {
         let bytes_for_validators = Validators::required_bytes(max_validators as usize);
         // Calculate the expected lido's size
         8 + LIDO_CONSTANT_SIZE + bytes_for_validators + bytes_for_maintainers
+    }
+}
+
+impl<'info> Deposit<'info> {
+    pub fn process(&mut self, amount: u64) -> Result<()> {
+        Ok(())
     }
 }
