@@ -40,40 +40,40 @@ impl Maintainers {
         self.entries.is_empty()
     }
 
-    pub fn add(&mut self, address: Pubkey) -> std::result::Result<(), LidoError> {
+    pub fn add(&mut self, address: Pubkey) -> Result<()> {
         if self.len() == self.maximum_entries as usize {
-            return Err(LidoError::MaximumNumberOfAccountsExceeded);
+            return err!(LidoError::MaximumNumberOfAccountsExceeded);
         }
         if !self.entries.iter().any(|pe| *pe == address) {
             self.entries.push(address);
         } else {
-            return Err(LidoError::DuplicatedEntry);
+            return err!(LidoError::DuplicatedEntry);
         }
         Ok(())
     }
 
-    pub fn remove(&mut self, address: &Pubkey) -> std::result::Result<(), LidoError> {
+    pub fn remove(&mut self, address: &Pubkey) -> Result<()> {
         let idx = self
             .entries
             .iter()
             .position(|pe| pe == address)
-            .ok_or(LidoError::InvalidAccountMember)?;
+            .ok_or_else(|| error!(LidoError::InvalidAccountMember))?;
         self.entries.swap_remove(idx);
         Ok(())
     }
 
-    pub fn get(&self, address: &Pubkey) -> std::result::Result<&Pubkey, LidoError> {
+    pub fn get(&self, address: &Pubkey) -> Result<&Pubkey> {
         self.entries
             .iter()
             .find(|pe| *pe == address)
-            .ok_or(LidoError::InvalidAccountMember)
+            .ok_or_else(|| error!(LidoError::InvalidAccountMember))
     }
 
-    pub fn get_mut(&mut self, address: &Pubkey) -> std::result::Result<&mut Pubkey, LidoError> {
+    pub fn get_mut(&mut self, address: &Pubkey) -> Result<&mut Pubkey> {
         self.entries
             .iter_mut()
             .find(|pe| *pe == address)
-            .ok_or(LidoError::InvalidAccountMember)
+            .ok_or_else(|| error!(LidoError::InvalidAccountMember))
     }
 
     /// Return how many bytes are needed to serialize an instance holding `max_entries`.

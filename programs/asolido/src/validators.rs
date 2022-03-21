@@ -90,10 +90,7 @@ impl Validators {
             .ok_or(LidoError::InvalidAccountMember)
     }
 
-    pub fn get_mut(
-        &mut self,
-        address: &Pubkey,
-    ) -> Result<&mut PubkeyAndEntry> {
+    pub fn get_mut(&mut self, address: &Pubkey) -> Result<&mut PubkeyAndEntry> {
         self.entries
             .iter_mut()
             .find(|pe| &pe.pubkey == address)

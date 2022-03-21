@@ -125,14 +125,12 @@ pub mod asolido {
         ctx.accounts.process()
     }
 
-    #[allow(unused_variables)]
     pub fn add_maintainer(ctx: Context<AddMaintainer>) -> Result<()> {
-        todo!()
+        ctx.accounts.process()
     }
-
-    #[allow(unused_variables)]
+    
     pub fn remove_maintainer(ctx: Context<RemoveMaintainer>) -> Result<()> {
-        todo!()
+        ctx.accounts.process()
     }
 
     #[allow(unused_variables)]
@@ -278,10 +276,22 @@ pub struct RemoveValidator<'info> {
 }
 
 #[derive(Accounts)]
-pub struct AddMaintainer {}
+pub struct AddMaintainer<'info> {
+    #[account(mut, has_one = manager)]
+    pub lido: Box<Account<'info, Lido>>,
+    pub manager: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub maintainer: UncheckedAccount<'info>,
+}
 
 #[derive(Accounts)]
-pub struct RemoveMaintainer {}
+pub struct RemoveMaintainer<'info> {
+    #[account(mut, has_one = manager)]
+    pub lido: Box<Account<'info, Lido>>,
+    pub manager: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub maintainer: UncheckedAccount<'info>,
+}
 
 #[derive(Accounts)]
 pub struct MergeStake {}

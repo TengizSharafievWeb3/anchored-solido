@@ -1,5 +1,5 @@
 use crate::state::Validator;
-use crate::{AddValidator, DeactivateValidator, RemoveValidator};
+use crate::{AddMaintainer, AddValidator, DeactivateValidator, RemoveMaintainer, RemoveValidator};
 use anchor_lang::prelude::*;
 
 impl<'info> AddValidator<'info> {
@@ -33,12 +33,23 @@ impl<'info> RemoveValidator<'info> {
 /// This prevents new funds from being staked with this validator, and enables
 /// removing the validator once no stake is delegated to it any more, and once
 /// it has no unclaimed fee credit.
-impl <'info> DeactivateValidator<'info> {
+impl<'info> DeactivateValidator<'info> {
     pub fn process(&mut self) -> Result<()> {
-        let validator = self.lido.validators
-            .get_mut(&self.validator_vote.key())?;
+        let validator = self.lido.validators.get_mut(&self.validator_vote.key())?;
         validator.entry.active = false;
         // TODO Emit validator deactivated
         Ok(())
+    }
+}
+
+impl<'info> AddMaintainer<'info> {
+    pub fn process(&mut self) -> Result<()> {
+        self.lido.maintainers.add(self.maintainer.key())
+    }
+}
+
+impl<'info> RemoveMaintainer<'info> {
+    pub fn process(&mut self) -> Result<()> {
+        self.lido.maintainers.remove(&self.maintainer.key())
     }
 }
