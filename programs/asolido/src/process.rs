@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 use std::collections::BTreeMap;
+use solana_program::program::invoke;
+use solana_program::system_instruction;
 
 use crate::maintainers::Maintainers;
 use crate::metrics::Metrics;
 use crate::state::{ExchangeRate, FeeRecipients, LIDO_CONSTANT_SIZE};
 use crate::validators::Validators;
-use crate::{Deposit, Initialize, RewardDistribution};
+use crate::{Deposit, Initialize, Lamports, RewardDistribution};
 
 impl<'info> Initialize<'info> {
     pub fn process(
@@ -51,7 +53,25 @@ impl<'info> Initialize<'info> {
 }
 
 impl<'info> Deposit<'info> {
-    pub fn process(&mut self, amount: u64) -> Result<()> {
+    pub fn process(&mut self, amount: Lamports) -> Result<()> {
+        require!(amount > 0, LidoError::InvalidAmount);
+
+        invoke(
+            &system_instruction::transfer( &self.user.key(), &self.reserve.key(), amount.amount),
+            &[
+                self.user.to_account_info(),
+                self.reserve.to_account_info(),
+            ],
+        )?;
+
+        let st_sol_amount = self.lido.exchange_rate.exchange_sol(amount)?;
+
+        // mint_st_sol
+
+        // emit event about deposit
+
+        self.lido.metrics.observe_deposit(amount)?;
+
         Ok(())
     }
 }

@@ -44,7 +44,7 @@ pub mod asolido {
     ///
     /// This can be called by anybody.
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        ctx.accounts.process(amount)
+        ctx.accounts.process(Lamports::new(amount))
     }
 
     /// Withdraw a given amount of stSOL.
@@ -224,8 +224,7 @@ pub struct Deposit<'info> {
 
     // Is writable due to mint to (spl_token::instruction::mint_to) recipient from st_sol_mint
     #[account(mut,
-        address = lido.st_sol_mint @ LidoError::InvalidMint,
-        constraint = st_sol_mint.mint_authority == COption::Some(mint_authority.key()) @ LidoError::InvalidMint
+        address = lido.st_sol_mint @ LidoError::InvalidMint
     )]
     pub st_sol_mint: Account<'info, Mint>,
 
