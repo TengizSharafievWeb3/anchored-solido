@@ -7,7 +7,7 @@ use crate::maintainers::Maintainers;
 use crate::metrics::Metrics;
 use crate::state::{ExchangeRate, FeeRecipients, LIDO_CONSTANT_SIZE};
 use crate::validators::Validators;
-use crate::{Deposit, Initialize, Lamports, RewardDistribution};
+use crate::{Deposit, Initialize, Lamports, RewardDistribution, LidoError};
 
 impl<'info> Initialize<'info> {
     pub fn process(
@@ -54,7 +54,7 @@ impl<'info> Initialize<'info> {
 
 impl<'info> Deposit<'info> {
     pub fn process(&mut self, amount: Lamports) -> Result<()> {
-        require!(amount > 0, LidoError::InvalidAmount);
+        require!(amount.amount > 0, LidoError::InvalidAmount);
 
         invoke(
             &system_instruction::transfer( &self.user.key(), &self.reserve.key(), amount.amount),

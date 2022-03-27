@@ -1,8 +1,8 @@
 use crate::LidoError;
-use anchor_lang::anchor_attribute_error::error;
 use solana_program::pubkey::Pubkey;
 use solana_program::vote::program::ID;
 use std::convert::TryInto;
+use anchor_lang::error;
 
 /// Structure used to read the first 4 fields of a Solana `VoteAccount`.
 /// The original `VoteAccount` structure cannot be used in a Solana
