@@ -1,13 +1,12 @@
 use anchor_lang::prelude::*;
 use std::collections::BTreeMap;
-use solana_program::program::invoke;
-use solana_program::system_instruction;
 
 use crate::maintainers::Maintainers;
 use crate::metrics::Metrics;
 use crate::state::{ExchangeRate, FeeRecipients, LIDO_CONSTANT_SIZE};
 use crate::validators::Validators;
 use crate::{Deposit, Initialize, Lamports, RewardDistribution, LidoError};
+use crate::logic::mint_st_sol_to;
 
 impl<'info> Initialize<'info> {
     pub fn process(
@@ -56,19 +55,26 @@ impl<'info> Deposit<'info> {
     pub fn process(&mut self, amount: Lamports) -> Result<()> {
         require!(amount.amount > 0, LidoError::InvalidAmount);
 
-        invoke(
-            &system_instruction::transfer( &self.user.key(), &self.reserve.key(), amount.amount),
-            &[
-                self.user.to_account_info(),
-                self.reserve.to_account_info(),
-            ],
-        )?;
+        let cpi_accounts = anchor_lang::system_program::Transfer {
+            from: self.user.to_account_info(),
+            to: self.reserve.to_account_info(),
+        };
+        let cpi_context = anchor_lang::context::CpiContext::new(
+            self.system_program.to_account_info(), cpi_accounts
+        );
+        anchor_lang::system_program::transfer(cpi_context, amount.amount)?;
 
         let st_sol_amount = self.lido.exchange_rate.exchange_sol(amount)?;
 
-        // mint_st_sol
+        mint_st_sol_to(&self.lido,
+        self.token_program.to_account_info(),
+            self.st_sol_mint.to_account_info(),
+            self.mint_authority.to_account_info(),
+            self.recipient.to_account_info(),
+            st_sol_amount
+        )?;
 
-        // emit event about deposit
+        // TODO: emit event about deposit
 
         self.lido.metrics.observe_deposit(amount)?;
 

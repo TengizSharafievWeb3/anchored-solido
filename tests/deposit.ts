@@ -171,10 +171,11 @@ describe("Deposit", () => {
     // In general, the received stSOL need not be equal to the deposited SOL,
     // but initially, the exchange rate is 1, so this holds.
     expect(reserveBalance).to.be.equal(rentExempt + TEST_DEPOSIT_AMOUNT);
-    const recipientAccount = program.account.recipient.fetch(recipient.publicKey);
-    expect(recipientAccount.amount).to.be.deep.equal(new BN(TEST_DEPOSIT_AMOUNT));
+    const recipientAccount = await spl_token.account.token.fetch(recipient.publicKey);
+    expect(recipientAccount.amount.toNumber()).to.be.equal(TEST_DEPOSIT_AMOUNT);
 
     const lidoAccount = await program.account.lido.fetch(lido.publicKey);
-    expect(lidoAccount.metrics.depositAmount.total).to.be.deep.equal(new BN(TEST_DEPOSIT_AMOUNT));
+    console.log(lidoAccount.metrics);
+    expect(lidoAccount.metrics.depositAmount.total.amount.toNumber()).to.be.equal(TEST_DEPOSIT_AMOUNT);
   });
 });
